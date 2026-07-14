@@ -1,0 +1,57 @@
+{
+  "project_name": "spec",
+  "generated_at": "2026-07-14 16:40:51.324876+00:00",
+  "mode": "improve",
+  "experiments_kept": [
+    {
+      "id": 2,
+      "timestamp": "2026-07-14 12:36:47.816437",
+      "hypothesis": "Project scaffold + data layer (combined H1+H2)",
+      "change_summary": "Created complete project scaffold: pyproject.toml, FastAPI app factory, Pydantic config, data models, DataProvider ABC, MockProvider, AKShareTHSProvider, rate limiter, structlog, 23 tests, CLAUDE.md",
+      "issue_number": 1,
+      "pr_number": 2,
+      "score_before": 0.493,
+      "score_after": 0.611,
+      "delta": 0.118,
+      "verdict": "keep",
+      "cost_usd": null,
+      "notes": "ceo:keep score_delta=+0.118 precheck=manual_pass agents_spawned=R,S,B,R,E pr_status=open_for_review hypothesis_type=code execution_artifacts=na e2e=pass backlog_cleared=na",
+      "research_citations": []
+    }
+  ],
+  "experiments_reverted": [
+    {
+      "id": 1,
+      "timestamp": "2026-07-14 12:35:31.035112",
+      "hypothesis": "Project scaffold with app factory, config, data models, MockProvider, structured logging, and tests",
+      "change_summary": "Created complete project scaffold: pyproject.toml, FastAPI app factory, Pydantic config, data models, DataProvider ABC, MockProvider, AKShareTHSProvider, rate limiter, structlog, 23 tests, CLAUDE.md",
+      "issue_number": 1,
+      "pr_number": 2,
+      "score_before": null,
+      "score_after": null,
+      "delta": null,
+      "verdict": "revert",
+      "cost_usd": null,
+      "notes": "[OVERRIDDEN by finalize gate] precheck failed: score_direction. ceo:keep score_delta=+0.090 precheck=scope_infra_issue(false_neg) agents_spawned=R,S,B,R,E pr_status=open_for_review hypothesis_type=code execution_artifacts=na e2e=pass backlog_cleared=na",
+      "research_citations": []
+    }
+  ],
+  "experiments_errored": [],
+  "backlog_remaining": [
+    "**PushPlus token configuration** \u2014 requires user to register at pushplus.plus and obtain a personal token. Set `PUSHPLUS_TOKEN` in `.env` file.",
+    "**AKShare THS endpoint validation on target server** \u2014 THS interface availability varies by network location. Must verify from deployment environment.",
+    "**chinese-calendar package annual update** \u2014 package needs yearly refresh for next year's holiday dates. Check for updates each January.",
+    "**Production server provisioning** \u2014 Docker host selection, domain/IP setup, and firewall configuration require human decisions.",
+    "**3-day stability verification** \u2014 Phase 5 acceptance criterion (\"\u7a33\u5b9a\u8fd0\u884c3\u4e2a\u4ea4\u6613\u65e5\") requires human observation during live trading.",
+    "Monitoring engine: alert evaluation (price_above/below, change_pct, news_keyword), cooldown-based dedup, trading hours gate via chinese-calendar, APScheduler integration with lifespan pattern",
+    "PushPlus notification client: POST to pushplus.plus/send, daily count tracking in DB (180/day cap), push history logging, --test CLI mode for end-to-end validation",
+    "REST API endpoints: stock watchlist CRUD, alert rule CRUD, push history (paginated), test-push endpoint",
+    "Web management UI: HTMX + Jinja2 dashboard with SSE real-time quotes, watchlist management, alert rule forms, push history view",
+    "Docker deployment: multi-stage Dockerfile, docker-compose with SQLite volume persistence, /health endpoint, daily heartbeat push, restart policy"
+  ],
+  "guard_violations": [],
+  "needs_human_input": [],
+  "score_start": null,
+  "score_end": 0.611,
+  "total_cost_usd": null
+}

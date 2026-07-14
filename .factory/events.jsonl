@@ -68,3 +68,21 @@
 {"type": "guard.completed", "timestamp": "2026-07-14T16:33:45.314528+00:00", "project": "spec", "agent": null, "data": {"violations": 1, "clean": false}}
 {"type": "precheck.completed", "timestamp": "2026-07-14T16:34:07.930673+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
 {"type": "guard.completed", "timestamp": "2026-07-14T16:34:12.096241+00:00", "project": "spec", "agent": null, "data": {"violations": 1, "clean": false}}
+{"type": "guard.completed", "timestamp": "2026-07-14T16:34:23.394308+00:00", "project": "spec", "agent": null, "data": {"violations": 0, "clean": true}}
+{"type": "precheck.completed", "timestamp": "2026-07-14T16:34:32.340816+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
+{"type": "verdict.overridden", "timestamp": "2026-07-14T16:35:31.034485+00:00", "project": "spec", "agent": null, "data": {"exp_id": 1, "original_verdict": "keep", "new_verdict": "revert", "reason": "score_direction"}}
+{"type": "experiment.finalize", "timestamp": "2026-07-14T16:35:31.037553+00:00", "project": "spec", "agent": null, "data": {"exp_id": 1, "verdict": "revert", "hypothesis": "Project scaffold with app factory, config, data models, MockProvider, structured logging, and tests"}}
+{"type": "eval.started", "timestamp": "2026-07-14T16:35:41.118054+00:00", "project": "spec", "agent": null, "data": {"command": "python3 eval/score.py"}}
+{"type": "eval.completed", "timestamp": "2026-07-14T16:35:51.844529+00:00", "project": "spec", "agent": null, "data": {"composite": 0.610765, "passed": true, "dimensions": 11}}
+{"type": "experiment.begin", "timestamp": "2026-07-14T16:36:13.136755+00:00", "project": "spec", "agent": null, "data": {"exp_id": 2, "hypothesis": "Project scaffold + data layer (combined H1+H2)"}}
+{"type": "experiment.finalize", "timestamp": "2026-07-14T16:36:47.819282+00:00", "project": "spec", "agent": null, "data": {"exp_id": 2, "verdict": "keep", "hypothesis": "Project scaffold + data layer (combined H1+H2)"}}
+{"type": "agent.started", "timestamp": "2026-07-14T16:36:55.768591+00:00", "project": "spec", "agent": "archivist", "data": {"task": "Record experiment 2 outcome (verdict: keep).\n1. Read experiment history: factory history /Users/pearl/factory-projects/spec\n2. Write experiment note to .factory/archive/experiments/ with decision rati"}}
+{"type": "agent.completed", "timestamp": "2026-07-14T16:38:20.706994+00:00", "project": "spec", "agent": "archivist", "data": {"return_code": 0}}
+{"type": "phase.verdict", "timestamp": "2026-07-14T16:38:26.758835+00:00", "project": "spec", "agent": null, "data": {"verdict": "keep", "exp_id": 2}}
+{"type": "phase.archive.completed", "timestamp": "2026-07-14T16:38:26.838531+00:00", "project": "spec", "agent": null, "data": {"exp_id": 2}}
+{"type": "agent.started", "timestamp": "2026-07-14T16:38:39.330150+00:00", "project": "spec", "agent": "archivist", "data": {"task": "Final archive for this factory cycle on /Users/pearl/factory-projects/spec.\n1. Read full experiment history: factory history /Users/pearl/factory-projects/spec\n2. Ensure all experiments from this cycl"}}
+{"type": "agent.completed", "timestamp": "2026-07-14T16:40:29.955415+00:00", "project": "spec", "agent": "archivist", "data": {"return_code": 0}}
+{"type": "sprint.completed", "timestamp": "2026-07-14T16:40:35.440039+00:00", "project": "spec", "agent": null, "data": {}}
+{"type": "agent.failed", "timestamp": "2026-07-14T16:40:47.715765+00:00", "project": "spec", "agent": "builder", "data": {"return_code": 1, "stderr": "Agent timed out after 600.0s"}}
+{"type": "summary.started", "timestamp": "2026-07-14T16:40:51.322101+00:00", "project": "spec", "agent": null, "data": {}}
+{"type": "summary.completed", "timestamp": "2026-07-14T16:40:51.325736+00:00", "project": "spec", "agent": null, "data": {"kept": 1, "reverted": 1, "errored": 0, "backlog": 10}}

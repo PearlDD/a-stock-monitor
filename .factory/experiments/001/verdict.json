@@ -1,0 +1,15 @@
+{
+  "id": 1,
+  "timestamp": "2026-07-14 12:35:31.035112",
+  "hypothesis": "Project scaffold with app factory, config, data models, MockProvider, structured logging, and tests",
+  "change_summary": "Created complete project scaffold: pyproject.toml, FastAPI app factory, Pydantic config, data models, DataProvider ABC, MockProvider, AKShareTHSProvider, rate limiter, structlog, 23 tests, CLAUDE.md",
+  "issue_number": 1,
+  "pr_number": 2,
+  "score_before": null,
+  "score_after": null,
+  "delta": null,
+  "verdict": "revert",
+  "cost_usd": null,
+  "notes": "[OVERRIDDEN by finalize gate] precheck failed: score_direction. ceo:keep score_delta=+0.090 precheck=scope_infra_issue(false_neg) agents_spawned=R,S,B,R,E pr_status=open_for_review hypothesis_type=code execution_artifacts=na e2e=pass backlog_cleared=na",
+  "research_citations": []
+}

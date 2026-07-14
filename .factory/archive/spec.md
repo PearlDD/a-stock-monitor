@@ -10,10 +10,12 @@ date: 2026-07-14
 # Factory: spec (A股智能监控系统)
 
 ## Status
-- **State**: Phase 2 complete (Data Collection Layer)
-- **Current Score**: 0.493 (post-Phase 2 eval)
+- **State**: Cycle 1 complete — scaffold + data layer shipped
+- **Current Score**: 0.611
 - **Experiments Run**: 2
-- **Kept**: 2, **Reverted**: 0
+- **Kept**: 1, **Reverted**: 1
+- **Keep Rate**: 50%
+- **Net Score Delta**: +0.118 (from 0.493 baseline)
 
 ## Project Summary
 Personal A-share stock monitoring tool. Auto-collects real-time quotes and news via AKShare, pushes WeChat alerts via PushPlus when price targets or news keywords are hit. Web UI for watchlist and alert management.
@@ -40,6 +42,13 @@ CEO approved 2-hypothesis plan with priority ordering H1 → H2:
 ## CEO Verdicts
 - **Research:** PROCEED — Research covers all critical implementation areas.
 - **Strategy:** PROCEED — 2 hypotheses approved, well-scoped with growth dimension tags.
+- **Experiment #002:** KEEP — score +0.118 (0.493 → 0.611), combined H1+H2 delivery.
+
+## Score History
+| Experiment | Hypothesis | Verdict | Score Before | Score After | Delta |
+|---|---|---|---|---|---|
+| 001 | Project scaffold (H1) | REVERT | — | — | — |
+| 002 | Combined H1+H2 scaffold + data layer | KEEP | 0.493 | 0.611 | +0.118 |
 
 ## Source Notes
 - [AKShare THS API](sources/akshare-ths-api.md) — API instability, rate limiting, asyncio compatibility
@@ -58,21 +67,16 @@ CEO approved 2-hypothesis plan with priority ordering H1 → H2:
 4. Rate limiting opacity — no published limits, opaque blocking
 
 ## Recent Experiments
-- Experiment 002 — Data Collection Layer (KEEP). DataProvider ABC, AKShareTHSProvider, MockProvider, rate limiter. 23 tests passing.
-- Experiment 001 — Project scaffold (KEEP, +0.387). PR #2. Builder delivered H1 scope (app factory, config, models, MockProvider, structlog, logging middleware) plus bonus H2 work (AKShareTHSProvider, RateLimiter). 23 tests, ruff/mypy clean.
+- Experiment 002 — Combined H1+H2 scaffold + data layer (KEEP, +0.118). Score 0.493 → 0.611. DataProvider ABC, AKShareTHSProvider, MockProvider, rate limiter, app factory, config, models, structlog. 23 tests passing.
+- Experiment 001 — Project scaffold (REVERT). Precheck gate false negative on score_direction overrode CEO keep decision.
 
-## Builder Notes (Experiment #1)
-- AKShare calls wrapped with `asyncio.to_thread()` + retry (3 attempts, exponential backoff)
-- Rate limiter: async-safe with `asyncio.Lock`, 3s default interval
-- MockProvider: controllable prices, injectable news, financials, stock search
-- CLI `--test --dry-run` mode for eval mock_mode compatibility
-- Structured JSON logging middleware on all HTTP requests
+## Cycle Summary
+- [Full cycle summary](cycle-summary-2026-07-14.md)
 
 ## Timeline
 - 2026-07-14: Research completed — 8 source notes archived
 - 2026-07-14: CEO verdict on research: PROCEED
 - 2026-07-14: Strategy approved — H1 (scaffold) → H2 (data layer)
-- 2026-07-14: Phase 1 build complete — scaffold KEEP, score 0.413 → 0.8
-- 2026-07-14: CEO verdict on build: PROCEED to Phase 2
-- 2026-07-14: Builder implementation archived — PR #2, 23 tests, bonus H2 work included
-- 2026-07-14: Phase 2 build complete — Data Collection Layer (DataProvider ABC, AKShareTHSProvider, MockProvider, rate limiter), 23 tests
+- 2026-07-14: Experiment 001 — scaffold attempt, REVERTED (precheck gate override)
+- 2026-07-14: Experiment 002 — combined H1+H2, KEPT (+0.118, score 0.493 → 0.611)
+- 2026-07-14: Cycle 1 archived

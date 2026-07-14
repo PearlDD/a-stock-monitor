@@ -1,0 +1,15 @@
+{
+  "id": 2,
+  "timestamp": "2026-07-14 12:36:47.816437",
+  "hypothesis": "Project scaffold + data layer (combined H1+H2)",
+  "change_summary": "Created complete project scaffold: pyproject.toml, FastAPI app factory, Pydantic config, data models, DataProvider ABC, MockProvider, AKShareTHSProvider, rate limiter, structlog, 23 tests, CLAUDE.md",
+  "issue_number": 1,
+  "pr_number": 2,
+  "score_before": 0.493,
+  "score_after": 0.611,
+  "delta": 0.118,
+  "verdict": "keep",
+  "cost_usd": null,
+  "notes": "ceo:keep score_delta=+0.118 precheck=manual_pass agents_spawned=R,S,B,R,E pr_status=open_for_review hypothesis_type=code execution_artifacts=na e2e=pass backlog_cleared=na",
+  "research_citations": []
+}

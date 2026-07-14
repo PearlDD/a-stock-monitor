@@ -5,8 +5,8 @@ tags:
   - spec
 project: spec
 experiment_id: 1
-verdict: KEEP
-score_delta: "+0.387"
+verdict: REVERT
+score_delta: "0"
 date: 2026-07-14
 source: factory-archivist
 ---
@@ -17,7 +17,7 @@ source: factory-archivist
 A proper project scaffold with app factory, config, models, MockProvider, structlog, and tests will establish a solid foundation for the A-share monitoring system.
 
 ## Result
-**KEEP** — score changed from 0.413 to 0.8 (+0.387)
+**REVERT** — Precheck gate overrode CEO keep decision. score_direction check failed (false negative). No score_before/score_after recorded.
 
 ## Builder Implementation (PR #2)
 
@@ -49,7 +49,7 @@ Builder went beyond H1 scope into H2 territory by implementing `akshare_ths.py` 
 - All tests use MockProvider — no network calls
 
 ## CEO Verdict
-PROCEED — Builder delivered H1 scaffold plus bonus H2 work. No issues found. Ready for Phase 2 (Data Collection Layer).
+CEO voted KEEP (score_delta=+0.090, precheck=scope_infra_issue false_neg), but finalize gate overrode with REVERT due to score_direction precheck failure. Same code was re-submitted as Experiment 002 and successfully kept.
 
 ## Links
 - Project: spec

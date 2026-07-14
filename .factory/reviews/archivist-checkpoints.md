@@ -5,3 +5,5 @@
 - [x] archivist after build phase 1 — 2026-07-14T16:21:09Z
 - [x] archivist after build — 2026-07-14T16:29:36Z
 - [x] archivist after build phase 2 — 2026-07-14T16:30:00Z
+- [x] archivist after experiment 2 (keep) — 2026-07-14T16:38:26Z
+- [x] FINAL archivist — 2026-07-14T16:40:35Z
