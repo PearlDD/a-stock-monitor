@@ -8,7 +8,9 @@ class Settings(BaseSettings):
 
     pushplus_token: str = ""
     database_url: str = "sqlite+aiosqlite:///data/stock_monitor.db"
+    database_path: str = "data/stock_monitor.db"
     log_level: str = "INFO"
+    pushplus_daily_limit: int = 180
 
     model_config = {
         "env_file": ".env",
