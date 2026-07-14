@@ -63,3 +63,5 @@
 {"type": "guard.completed", "timestamp": "2026-07-14T16:31:49.814317+00:00", "project": "spec", "agent": null, "data": {"violations": 1, "clean": false}}
 {"type": "precheck.completed", "timestamp": "2026-07-14T16:32:00.132556+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
 {"type": "guard.completed", "timestamp": "2026-07-14T16:32:11.310608+00:00", "project": "spec", "agent": null, "data": {"violations": 1, "clean": false}}
+{"type": "precheck.completed", "timestamp": "2026-07-14T16:33:07.573335+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
+{"type": "guard.completed", "timestamp": "2026-07-14T16:33:11.649524+00:00", "project": "spec", "agent": null, "data": {"violations": 2, "clean": false}}
