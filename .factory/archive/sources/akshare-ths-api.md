@@ -9,11 +9,32 @@ date: 2026-07-14
 
 # AKShare THS Interface — Usage & Rate Limiting
 
-## Verified Working Interfaces
+## API Instability Alert (Feb 2026)
+
+As of February 2026, **East Money `push2*` API endpoints are broken**:
+- `stock_zh_a_hist()` — BROKEN (connection abort)
+- `stock_individual_info_em()` — BROKEN (connection abort)
+
+**Still working**:
+- `stock_zh_a_spot()` — Real-time A-share market data (5,483+ stocks)
+- `stock_info_a_code_name()` — A-share stock code/name listing
+- `stock_zh_a_spot_em()` — Works but has **asyncio event loop conflict** in async environments
+
+References: akfamily/akshare#7051
+
+## Verified Working THS Interfaces
 
 - `ak.stock_board_industry_name_ths()` — Industry sector names
 - `ak.stock_financial_abstract_ths(symbol, indicator)` — Financial abstracts
 - `ak.stock_news_em(stock)` — Stock news (East Money, not THS)
+
+## Critical: asyncio Compatibility
+
+AKShare uses `requests` (synchronous) internally. In FastAPI async context, must use:
+```python
+result = await asyncio.to_thread(ak.stock_zh_a_spot_em)
+```
+Direct calls will block the event loop or raise "cannot call asyncio.run() from running event loop".
 
 ## Critical: Rate Limiting
 

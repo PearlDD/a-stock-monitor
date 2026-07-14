@@ -1,40 +1,18 @@
 # Researcher Agent Output
 
-- **timestamp:** 2026-07-14T16:06:07Z
+- **timestamp:** 2026-07-14T16:14:09Z
 - **exit_code:** 0
 
 ---
 
-Discovery complete. Here's what was produced:
+Research report written to `.factory/strategy/research.md`. Key new findings from web research:
 
-### Outputs
+1. **AKShare API instability** — East Money `push2*` endpoints (including `stock_zh_a_hist`, `stock_individual_info_em`) are broken since Feb 2026. THS interfaces still work but the DataProvider abstraction is critical insurance.
 
-1. **`.factory/strategy/research.md`** — Comprehensive research report covering:
-   - 6 similar open-source projects analyzed (daily_stock_analysis, stock-scanner, etc.)
-   - AKShare THS API usage patterns with specific function calls verified
-   - Rate limiting strategy (no official limits published; recommend 2-3s between requests, cache aggressively)
-   - FastAPI + HTMX + SSE real-time dashboard pattern with code examples
-   - APScheduler integration (AsyncIOScheduler + lifespan, single-worker constraint)
-   - PushPlus API spec (200/day limit, **hard stop at 180** to avoid 2-day ban at 400 attempts)
-   - SQLite schema design (5 tables: stocks, alert_rules, price_snapshots, push_history, news_cache)
-   - Trading calendar approach (`chinese-calendar` package, handles 补班 correctly)
-   - Mock/test provider pattern (ABC + controllable MockProvider)
-   - 8 pitfalls with mitigations
-   - MVP scope recommendation aligned with Phases 2-3
+2. **asyncio conflict** — AKShare uses synchronous `requests` internally. Must wrap all calls in `asyncio.to_thread()` to avoid blocking FastAPI's event loop.
 
-2. **`.factory/eval_profile.json`** — 6 eval dimensions:
-   - Tests (0.40) — pytest
-   - Type check (0.15) — mypy
-   - Lint (0.15) — ruff
-   - Import check (0.10) — app imports cleanly
-   - Mock mode (0.15) — `--test` mode starts
-   - Docker build (0.05) — container builds
+3. **aiosqlite required** — Standard `sqlite3` blocks the event loop. Must use `aiosqlite` with WAL mode, busy_timeout, and FastAPI dependency injection.
 
-3. **`eval/score.py`** — Standalone scoring script outputting JSON with weighted overall score
+4. **HTMX template patterns** — Underscore-prefixed partials (`_stock_card.html`), route duality (full page vs fragment based on `HX-Request` header), OOB swaps for multi-element updates.
 
-### Key Findings
-
-- **AKShare risk**: No published rate limits, anti-crawling tightened in 2026. Must build defensive rate limiting from day 1.
-- **PushPlus trap**: Going over 400 attempts (not just 200) triggers a 2-day account ban — critical to track daily count in DB.
-- **Architecture validated**: The DataProvider abstraction + MockProvider pattern is used by every successful similar project.
-- **HTMX+SSE proven**: Sub-50ms partial updates, ~14KB JS footprint, well-documented pattern with `sse-starlette`.
+5. **APScheduler lifespan** — Confirmed pattern using `AsyncIOScheduler` with FastAPI's `asynccontextmanager` lifespan. Single-worker constraint documented.

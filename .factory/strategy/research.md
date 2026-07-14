@@ -4,81 +4,17 @@
 
 A personal A-share stock monitoring tool that auto-collects real-time quotes and news, pushes alerts to WeChat (via PushPlus) when price targets or news keywords are hit. Web UI for managing watchlists and alert rules. Stack: Python + FastAPI + AKShare (THS) + SQLite + HTMX/SSE + APScheduler + Docker.
 
-Phase 1 (PushPlus push) is complete. Project is starting Phase 2 (data collection layer).
+Phase 1 (PushPlus push) is complete. Project has NO source code yet — first Improve cycle must build project scaffold and core data layer (Phase 2).
 
 ---
 
-## Similar Projects
+## External Research Findings (Web Search 2026-07-14)
 
-| Project | Stars | Relevance | Key Takeaway |
-|---------|-------|-----------|--------------|
-| [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis) | Active | High | LLM-driven multi-market analysis with AKShare fallback, multi-channel push (WeChat Work/Telegram/Slack), GitHub Actions scheduling. Architecture: modular data providers with fallback chain. |
-| [stock-scanner](https://github.com/DR-lin-eng/stock-scanner) | Active | Medium | AI-enhanced A-share analysis, 25 financial indicators, news sentiment. Shows how to structure indicator calculations. |
-| [aiagents-stock](https://github.com/oficcejo/aiagents-stock) | Active | Medium | Multi-agent monitoring with real-time alerts and notification services. Complex but shows alert engine patterns. |
-| [pythonstock/stock](https://github.com/pythonstock/stock) | Mature | Medium | Full-stack Python stock system with Docker deployment, MySQL storage. Good reference for Docker packaging. |
-| [adata](https://github.com/1nchaos/adata) | Active | Low-Med | Multi-source data fusion with dynamic proxy. Shows resilient data fetching patterns. |
-| [Ashare](https://github.com/mpquant/Ashare) | Mature | Low | Minimal real-time data wrapper. Shows simplest possible quote fetching. |
+### 1. FastAPI + Jinja2 + HTMX Project Structure
 
-**Key pattern across projects**: All successful ones use a DataProvider abstraction layer with fallback sources. This validates the spec's MockProvider + AKShare provider design.
+**Source**: [Blake Crosley FastAPI+HTMX Guide](https://blakecrosley.com/guides/fastapi-htmx), [TestDriven.io](https://testdriven.io/courses/fastapi-htmx/fastapi-setup/), [Medium Production Guide](https://medium.com/@sylvesterranjithfrancis/complete-guide-building-production-ready-web-apps-with-fastapi-and-htmx-from-setup-to-deployment-3010b1c8ff5c)
 
----
-
-## AKShare THS Interface — Usage & Pitfalls
-
-### Verified Working Interfaces
-
-Based on the spec's validation and AKShare docs:
-
-```python
-import akshare as ak
-
-# Industry sector names (板块列表)
-df = ak.stock_board_industry_name_ths()
-
-# Financial abstract for a stock (财务摘要)
-df = ak.stock_financial_abstract_ths(symbol="000001", indicator="按报告期")
-
-# Stock news from East Money (新闻 — note: uses EM, not THS)
-df = ak.stock_news_em(stock="000001")
-```
-
-### Critical: Rate Limiting
-
-AKShare has **no built-in rate limiting**. The underlying data sources (THS, East Money) enforce anti-crawling:
-
-- **No official rate limit numbers published** — thresholds are opaque and change without notice
-- Users report getting blocked "mysteriously" with no clear recovery time ([akfamily/akshare#6990](https://github.com/akfamily/akshare/issues/6990))
-- THS interfaces added 401 anti-crawling in early 2026 for some endpoints
-- **2026 legal context**: China's modified Cybersecurity Law (effective 2026-01-01) tightens rules around web scraping
-
-### Recommended Rate Limiting Strategy
-
-```
-- Minimum 2-3 seconds between requests to same data source
-- Batch stock queries where API supports it (reduce total calls)
-- Cache financial data aggressively (changes quarterly, not minutely)
-- Cache news for 5+ minutes
-- Real-time quotes: 1 request per stock per minute (spec says "每分钟刷新")
-- For 20 stocks: ~20 requests/minute = 1 every 3 seconds (safe)
-- For 50+ stocks: consider batching or longer intervals
-- Log all request timestamps for debugging rate limit issues
-- Implement exponential backoff on HTTP errors (401, 403, 429, 5xx)
-```
-
-### Data Freshness by Type
-
-| Data Type | Update Frequency | Cache Duration |
-|-----------|-----------------|----------------|
-| Quotes/Prices | Real-time during trading | 60 seconds |
-| News | Throughout day | 5 minutes |
-| Financial abstracts | Quarterly | 24 hours |
-| Industry sectors | Rarely changes | 1 week |
-
----
-
-## FastAPI + Jinja2 + HTMX Architecture
-
-### Recommended Project Structure
+**Recommended directory layout** (organize by type, not feature):
 
 ```
 src/
@@ -87,7 +23,7 @@ src/
 │   ├── main.py              # FastAPI app, lifespan, middleware
 │   ├── config.py            # Pydantic Settings (.env loading)
 │   ├── database.py          # SQLite setup (aiosqlite)
-│   ├── models.py            # SQLAlchemy/dataclass models
+│   ├── models.py            # Dataclass models (StockQuote, AlertRule, etc.)
 │   ├── providers/
 │   │   ├── __init__.py
 │   │   ├── base.py          # DataProvider ABC
@@ -109,10 +45,10 @@ src/
 │   │   └── sse.py           # SSE streaming endpoints
 │   └── templates/
 │       ├── base.html
-│       ├── components/      # Reusable Jinja2 partials
-│       │   ├── stock_card.html
-│       │   ├── alert_row.html
-│       │   └── nav.html
+│       ├── components/      # Reusable Jinja2 partials (_prefixed)
+│       │   ├── _stock_card.html
+│       │   ├── _alert_row.html
+│       │   └── _nav.html
 │       └── pages/
 │           ├── dashboard.html
 │           ├── watchlist.html
@@ -120,9 +56,10 @@ src/
 │           └── history.html
 ├── static/
 │   ├── css/
-│   ├── js/                  # htmx.min.js (self-hosted)
+│   ├── js/                  # htmx.min.js (self-hosted, ~14KB gzipped)
 │   └── img/
 ├── tests/
+│   ├── conftest.py
 │   ├── test_providers.py
 │   ├── test_alerts.py
 │   ├── test_engine.py
@@ -133,142 +70,134 @@ src/
 └── .env.example
 ```
 
-### SSE Real-Time Updates Pattern
+**Key patterns discovered**:
 
-The proven pattern for HTMX + SSE dashboards (from [Medium/CodeX](https://medium.com/codex/building-real-time-dashboards-with-fastapi-and-htmx-01ea458673cb)):
+1. **Route duality** — Same route returns full page OR fragment based on `HX-Request` header:
+   ```python
+   @router.get("/dashboard")
+   async def dashboard(request: Request):
+       data = await get_dashboard_data()
+       if request.headers.get("HX-Request"):
+           return templates.TemplateResponse("components/_quote_table.html", {"quotes": data})
+       return templates.TemplateResponse("pages/dashboard.html", {"quotes": data})
+   ```
 
-**Backend (FastAPI):**
-```python
-from sse_starlette.sse import EventSourceResponse
+2. **Underscore prefix convention** — Components never rendered standalone use `_` prefix (`_stock_card.html`), distinguishing fragments from pages.
 
-@app.get("/stream/quotes")
-async def stream_quotes():
-    async def event_generator():
-        try:
-            while True:
-                quotes = await get_latest_quotes()  # from cache/DB
-                html = templates.get_template(
-                    "components/quote_table.html"
-                ).render(quotes=quotes)
-                yield {"event": "quote_update", "data": html}
-                await asyncio.sleep(60)  # match monitoring interval
-        except asyncio.CancelledError:
-            pass
-    return EventSourceResponse(event_generator())
-```
+3. **OOB (Out-of-Band) swaps** — Single response updates multiple DOM elements. Critical for stock dashboard: update quote table AND alert count badge in one response:
+   ```html
+   <div id="quotes">…updated table…</div>
+   <span id="alert-count" hx-swap-oob="true">3</span>
+   ```
 
-**Frontend (HTMX):**
-```html
-<div hx-ext="sse" sse-connect="/stream/quotes">
-    <div id="quotes" sse-swap="quote_update" hx-swap="innerHTML">
-        <!-- Loading spinner -->
-    </div>
-</div>
-```
+4. **`Vary: HX-Request` header** — Essential for CDN/proxy compatibility when same URL serves full page vs fragment.
 
-**Key best practices:**
-- Use `sse-starlette` package for SSE support
-- Stream rendered HTML fragments, not JSON (let server do the rendering)
-- Include `Vary: HX-Request` header for CDN/proxy compatibility
-- Dual-response pattern: same route returns full page or fragment based on `HX-Request` header
-- Self-host htmx.min.js (~14KB gzipped) — no CDN dependency
-- Performance: expect sub-50ms partial updates
+5. **Self-host htmx.min.js** — No CDN dependency for reliability.
 
-### Dependencies
+6. **Jinja2 globals** — Register translation, CSRF, asset URL functions as globals so every template can use them without route-handler passing.
 
-```
-fastapi
-uvicorn[standard]
-jinja2
-sse-starlette
-python-multipart    # form handling
-```
+**Dependencies**: `fastapi`, `uvicorn[standard]`, `jinja2`, `sse-starlette`, `python-multipart`
 
 ---
 
-## APScheduler + FastAPI Integration
+### 2. AKShare THS API — Critical 2026 Findings
 
-### Setup Pattern (AsyncIOScheduler)
+**Sources**: [AKShare GitHub](https://github.com/akfamily/akshare), [Issue #7051](https://github.com/akfamily/akshare/issues/7051), [AKShare Docs](https://akshare.akfamily.xyz/data/stock/stock.html)
+
+#### API Instability Alert (NEW FINDING)
+
+As of February 2026, **East Money `push2*` API endpoints are broken**:
+- `stock_zh_a_hist()` — BROKEN (connection abort)
+- `stock_individual_info_em()` — BROKEN (connection abort)
+
+**Still working**:
+- `stock_zh_a_spot()` — Real-time A-share market data (5,483+ stocks)
+- `stock_info_a_code_name()` — A-share stock code/name listing
+- `stock_zh_a_spot_em()` — Works via direct Python call, but has **asyncio event loop conflict** in async environments ("asyncio.run() cannot be called from a running event loop")
+
+#### Verified THS Interfaces (from project validation)
 
 ```python
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from contextlib import asynccontextmanager
+import akshare as ak
 
-scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
+# Industry sector names
+df = ak.stock_board_industry_name_ths()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    scheduler.add_job(monitor_quotes, "cron",
-                      day_of_week="mon-fri",
-                      hour="9-11,13-15",
-                      minute="*/1")
-    scheduler.add_job(monitor_news, "interval", minutes=5)
-    scheduler.start()
-    yield
-    scheduler.shutdown()
+# Financial abstract for a stock
+df = ak.stock_financial_abstract_ths(symbol="000001", indicator="按报告期")
 
-app = FastAPI(lifespan=lifespan)
+# Stock news (uses East Money, NOT THS)
+df = ak.stock_news_em(stock="000001")
 ```
 
-### Critical Considerations
+#### Critical: asyncio Compatibility
 
-1. **Single worker only**: If using multiple uvicorn workers, scheduler runs in EACH worker. For this personal tool, single worker is fine. Document this constraint.
-2. **Error handling**: Wrap every job in try/except — an unhandled exception kills the scheduler.
-3. **Job persistence**: APScheduler's default MemoryJobStore loses jobs on restart. For this use case (cron-based, not dynamic), that's fine — jobs are defined in code.
-4. **Trading hours**: Use cron expressions to restrict to A-share trading hours (9:30-11:30, 13:00-15:00 Beijing time). Add a `is_trading_day()` check inside the job as a second gate.
+**AKShare uses `requests` (synchronous) internally**. In a FastAPI async context, calling AKShare directly will block the event loop. Two solutions:
+
+1. **`asyncio.to_thread()`** (Python 3.9+) — Run AKShare calls in thread pool:
+   ```python
+   import asyncio
+   result = await asyncio.to_thread(ak.stock_zh_a_spot_em)
+   ```
+
+2. **Dedicated thread executor** — For rate-limited sequential calls
+
+This is essential for the DataProvider's async interface.
+
+#### Rate Limiting Strategy
+
+- **No official rate limits published** — thresholds are opaque and change without notice
+- THS added 401 anti-crawling in early 2026
+- **Recommended**: Minimum 2-3 seconds between requests to same source
+- For 20 stocks: ~1 request/3 seconds (safe margin)
+- Exponential backoff on HTTP errors (401, 403, 429, 5xx)
+- Log all request timestamps for debugging
+
+#### Data Freshness by Type
+
+| Data Type | Update Frequency | Cache Duration |
+|-----------|-----------------|----------------|
+| Quotes/Prices | Real-time during trading | 60 seconds |
+| News | Throughout day | 5 minutes |
+| Financial abstracts | Quarterly | 24 hours |
+| Industry sectors | Rarely changes | 1 week |
 
 ---
 
-## PushPlus API Integration
+### 3. SQLite Schema Design
 
-### API Specification
+**Sources**: [SQLite WAL Tutorial](https://tech-insider.org/sqlite-python-tutorial-fts5-wal-mode-2026/), [aiosqlitepool](https://github.com/slaily/aiosqlitepool), [FastAPI async DB guide](https://oneuptime.com/blog/post/2026-02-02-fastapi-async-database/view)
 
-```
-POST http://www.pushplus.plus/send
-Content-Type: application/json
+#### aiosqlite for Async Access (NEW FINDING)
 
-{
-    "token": "YOUR_TOKEN",
-    "title": "股价预警: 贵州茅台",
-    "content": "<h2>目标价位触发</h2><p>当前价: ¥1850.00</p>",
-    "template": "html",
-    "channel": "wechat"
-}
-
-Response: {"code": 200, "msg": "请求成功", "data": "serial_number"}
-```
-
-### Rate Limits
-
-- **200 messages/day** free tier
-- Exceeding 200: messages silently dropped
-- Exceeding 400 attempts: **account blocked for 2 days**
-- **Must track daily send count** to avoid the 400-attempt ban
-
-### Recommended Implementation
+Standard `sqlite3` is synchronous and **blocks the event loop**. Must use `aiosqlite`:
 
 ```python
-class PushPlusClient:
-    MAX_DAILY = 180  # Safety margin below 200
-    
-    async def send(self, title: str, content: str) -> bool:
-        if self.daily_count >= self.MAX_DAILY:
-            logger.warning("Daily push limit approaching, skipping")
-            return False
-        # ... send request
-        self.daily_count += 1
+import aiosqlite
+
+async def get_db():
+    db = await aiosqlite.connect("stock_monitor.db")
+    db.row_factory = aiosqlite.Row
+    await db.execute("PRAGMA journal_mode=WAL")
+    await db.execute("PRAGMA synchronous=NORMAL")
+    await db.execute("PRAGMA cache_size=10000")  # ~40MB cache
+    await db.execute("PRAGMA busy_timeout=5000")  # 5s busy timeout
+    try:
+        yield db
+    finally:
+        await db.close()
 ```
 
-- Store daily count in DB, reset at midnight Beijing time
-- Set safety threshold at 180 (not 200) to leave room for test pushes
-- Log all push attempts with serial numbers for debugging
-- `code: 200` means "server received it", NOT "delivered to WeChat" — query delivery status separately if needed
+Use FastAPI dependency injection: `async def route(db=Depends(get_db))`.
 
----
+#### Write Contention Mitigation
 
-## SQLite Schema Design
+SQLite uses a database-level lock for writes. With APScheduler writing price snapshots every minute while the web UI reads:
+- **WAL mode** allows concurrent readers with one writer
+- **busy_timeout** prevents immediate SQLITE_BUSY errors
+- For this personal tool's scale (~4800 rows/day), contention is negligible
 
-### Recommended Tables
+#### Recommended Tables (5 total)
 
 ```sql
 -- Watchlist stocks
@@ -317,68 +246,80 @@ CREATE TABLE push_history (
 );
 CREATE INDEX idx_push_stock_time ON push_history(stock_id, sent_at);
 
--- News cache
+-- News cache (deduplicated by content_hash)
 CREATE TABLE news_cache (
     id INTEGER PRIMARY KEY,
     stock_id INTEGER REFERENCES stocks(id),
     title TEXT NOT NULL,
     url TEXT,
     source TEXT,
-    content_hash TEXT UNIQUE,       -- dedup by content hash
+    content_hash TEXT UNIQUE,       -- MD5 of title+url
     published_at TIMESTAMP,
     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_news_stock ON news_cache(stock_id, fetched_at);
 ```
 
-### Design Decisions
-
-- **WAL mode**: Enable `PRAGMA journal_mode=WAL` for concurrent read/write (scheduler writes while web UI reads)
-- **Price snapshot retention**: Keep 30 days, purge older. With 20 stocks × 240 minutes/day ≈ 4800 rows/day — negligible for SQLite
-- **News dedup**: Use `content_hash` (MD5 of title+url) to avoid duplicate entries
-- **No ORM overhead for reads**: Use raw SQL for dashboard queries (performance), SQLAlchemy for schema management only
+**Design decisions**:
+- WAL mode for concurrent read/write
+- Price snapshot retention: 30 days (purge older)
+- News dedup via content_hash (MD5 of title+url)
+- Raw SQL for read queries (performance), schema management via migrations
 
 ---
 
-## Trading Calendar & Hours
+### 4. APScheduler + FastAPI Integration
 
-### Recommended Approach
+**Sources**: [Sentry Guide](https://sentry.io/answers/schedule-tasks-with-fastapi/), [APScheduler Discussion #1088](https://github.com/agronholm/apscheduler/discussions/1088), [fastapi-scheduler](https://github.com/amisadmin/fastapi-scheduler)
 
-Use `chinese-calendar` or `cn-stock-holidays` package:
+#### Lifespan Pattern
 
 ```python
-from chinese_calendar import is_workday, is_holiday
-from datetime import datetime, time
-import pytz
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from contextlib import asynccontextmanager
 
-SHANGHAI_TZ = pytz.timezone("Asia/Shanghai")
+scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
-def is_trading_time() -> bool:
-    now = datetime.now(SHANGHAI_TZ)
-    if is_holiday(now.date()):
-        return False
-    t = now.time()
-    morning = time(9, 30) <= t <= time(11, 30)
-    afternoon = time(13, 0) <= t <= time(15, 0)
-    return morning or afternoon
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Quote monitoring: every minute during trading hours
+    scheduler.add_job(monitor_quotes, "cron",
+                      day_of_week="mon-fri",
+                      hour="9-11,13-14",
+                      minute="*/1",
+                      id="quote_monitor")
+    # News monitoring: every 5 minutes during trading hours
+    scheduler.add_job(monitor_news, "cron",
+                      day_of_week="mon-fri",
+                      hour="9-15",
+                      minute="*/5",
+                      id="news_monitor")
+    scheduler.start()
+    yield
+    scheduler.shutdown(wait=False)
+
+app = FastAPI(lifespan=lifespan)
 ```
 
-### Pitfalls
+#### Critical Considerations
 
-- **Chinese holidays are irregular**: Spring Festival, National Day dates change yearly. The `chinese-calendar` package updates annually (supports through 2026).
-- **Saturday/Sunday trading**: Never happens for A-shares, but some years have "补班" (make-up workdays on weekends) that are NOT trading days. `chinese-calendar` handles this correctly.
-- **Pre-market/after-hours**: A-shares have a call auction 9:15-9:25 — decide if you want to monitor this period.
-- **Half-day sessions**: Rare but possible (e.g., typhoon warnings in Shenzhen). Not worth coding for MVP.
+1. **Single worker only** — Scheduler runs in EACH uvicorn worker. Single worker is fine for personal tool. Document constraint.
+2. **Error handling** — Every job MUST be wrapped in try/except. Unhandled exceptions kill the scheduler silently.
+3. **Job persistence** — Default MemoryJobStore loses jobs on restart. For cron jobs defined in code, this is acceptable.
+4. **Trading hours double-gate** — Use cron expressions for rough time windows + `is_trading_day()` check inside the job as a second gate (handles holidays).
 
 ---
 
-## Mock/Test Provider Pattern
+### 5. MockProvider Pattern for Testing
 
-### Recommended Design
+**Sources**: [pytest external API testing](https://pytest-with-eric.com/api-testing/pytest-external-api-testing/), archive cross-project analysis
+
+#### Recommended Design
 
 ```python
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 
 @dataclass
 class StockQuote:
@@ -389,88 +330,146 @@ class StockQuote:
     volume: float
     timestamp: datetime
 
+@dataclass
+class NewsItem:
+    title: str
+    url: str
+    source: str
+    published_at: datetime
+    keywords: list[str]
+
 class DataProvider(ABC):
     @abstractmethod
     async def get_quote(self, symbol: str) -> StockQuote: ...
-    
+
     @abstractmethod
     async def get_news(self, symbol: str, limit: int = 10) -> list[NewsItem]: ...
-    
+
     @abstractmethod
-    async def get_financials(self, symbol: str) -> FinancialSummary: ...
-    
+    async def get_financials(self, symbol: str) -> dict: ...
+
     @abstractmethod
-    async def search_stocks(self, keyword: str) -> list[StockInfo]: ...
+    async def search_stocks(self, keyword: str) -> list[dict]: ...
 
 class MockProvider(DataProvider):
-    """Controllable provider for testing. Supports:
-    - set_price(symbol, price) — manually set price for trigger testing
-    - inject_news(symbol, title, keywords) — inject fake news
-    - simulate_day(symbol) — replay a full trading day
-    """
+    """Controllable fake provider for testing without network."""
+
+    def __init__(self):
+        self._prices: dict[str, float] = {}
+        self._news: dict[str, list[NewsItem]] = {}
+
+    def set_price(self, symbol: str, price: float, change_pct: float = 0.0):
+        """Manually set price for trigger testing."""
+        self._prices[symbol] = (price, change_pct)
+
+    def inject_news(self, symbol: str, title: str, keywords: list[str] = None):
+        """Inject fake news item for keyword alert testing."""
+        ...
+
+    async def get_quote(self, symbol: str) -> StockQuote:
+        price, change = self._prices.get(symbol, (100.0, 0.0))
+        return StockQuote(symbol=symbol, name=f"Mock-{symbol}",
+                          price=price, change_pct=change,
+                          volume=1000000, timestamp=datetime.now())
 ```
 
-This pattern allows `--test` mode to run the complete pipeline without any network calls.
+**Key insight from cross-project analysis**: All 6 successful A-share monitoring projects use this DataProvider abstraction pattern. The abstraction enables:
+1. Testing without network via MockProvider
+2. Swapping data sources when APIs break (critical given AKShare instability)
+3. `--test` CLI mode runs the complete pipeline (monitoring → alert → push) without network
+4. Gradual migration between data providers
+
+**Test strategy**:
+- Unit tests use MockProvider exclusively
+- Integration tests: `conftest.py` fixture provides MockProvider by default
+- Optional `--live` pytest marker for AKShare integration tests (CI skips these)
 
 ---
 
-## Potential Pitfalls & Mitigations
+## Similar Projects (Archive)
 
-| Pitfall | Impact | Mitigation |
-|---------|--------|------------|
-| AKShare THS 401 errors (anti-crawling) | Data collection stops | Exponential backoff + rate limiting + log alerts |
-| PushPlus 400-attempt ban | 2-day push blackout | Track daily count, hard stop at 180 |
-| Holiday calendar outdated | False alerts on holidays | Pin `chinese-calendar` version, check for updates annually |
-| SQLite write contention | Slow dashboard during data writes | Enable WAL mode, separate read/write connections |
-| SSE connection drops | Dashboard freezes | HTMX auto-reconnects SSE; add visual "disconnected" indicator |
-| AKShare API changes | Breaking interface changes | Pin akshare version, add integration test that calls each API |
-| Overseas network to THS | Intermittent connectivity | Retry logic, graceful degradation with cached data |
-| Large watchlist (50+ stocks) | Rate limit hit | Batch requests where possible, stagger fetches |
+| Project | Relevance | Key Takeaway |
+|---------|-----------|--------------|
+| [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis) | High | LLM-driven multi-market analysis with AKShare fallback, multi-channel push, GitHub Actions scheduling. Modular data providers with fallback chain. |
+| [stock-scanner](https://github.com/DR-lin-eng/stock-scanner) | Medium | AI-enhanced A-share analysis, 25 financial indicators, news sentiment. Good indicator calculation structure. |
+| [aiagents-stock](https://github.com/oficcejo/aiagents-stock) | Medium | Multi-agent monitoring with real-time alerts. Shows alert engine patterns. |
+
+**Cross-project pattern**: All use DataProvider abstraction with fallback sources.
 
 ---
 
-## MVP Scope Recommendation
+## PushPlus API (Archive)
 
-Aligned with the 5-phase plan, the MVP path (Phases 2-3) should deliver:
+- POST `http://www.pushplus.plus/send` with JSON (token, title, content, template, channel)
+- **200 messages/day** free tier; exceeding 400 attempts = 2-day account ban
+- Safety threshold: 180 messages/day (not 200)
+- Track daily count in DB, reset at midnight Beijing time
+- `code: 200` = server received, NOT delivered to WeChat
 
-### Phase 2 Minimum Viable:
-1. `DataProvider` ABC with `get_quote()`, `get_news()`, `get_financials()`
-2. `AKShareTHSProvider` — real implementation with rate limiting
-3. `MockProvider` — controllable test data
-4. Rate limiter utility (token bucket or simple sleep-based)
-5. Unit tests for providers
+---
 
-### Phase 3 Minimum Viable:
-1. SQLite schema (5 tables above)
-2. Alert engine: price trigger + change% trigger + news keyword trigger
-3. Dedup logic (cooldown-based, per-rule)
-4. Trading hours gate
-5. PushPlus integration (with daily count tracking)
-6. `--test` CLI flag → MockProvider + real push
-7. REST API endpoints for Phase 4
+## Trading Calendar (Archive)
 
-### What to defer:
-- Industry sector monitoring (nice-to-have, not core)
-- Financial data display (can use cached data from initial fetch)
-- Multi-channel push (PushPlus is sufficient for MVP)
-- Historical price charts (Phase 4+ feature)
+- Use `chinese-calendar` package (supports through 2026)
+- Trading hours: 9:30–11:30, 13:00–15:00 Beijing time
+- **Pitfall**: Saturday 补班 (make-up workdays) are NOT trading days
+- Pin package version, check for updates annually
+
+---
+
+## Recommended Focus Areas for First Build Cycle
+
+### Priority 1: Project Scaffold + DataProvider Interface
+- Create project structure (directory layout above)
+- Define `DataProvider` ABC with `StockQuote`, `NewsItem`, `FinancialSummary` dataclasses
+- Implement `MockProvider` with `set_price()`, `inject_news()` methods
+- Basic `conftest.py` with MockProvider fixture
+
+### Priority 2: Database Layer
+- SQLite schema (5 tables) with aiosqlite
+- WAL mode + PRAGMA configuration
+- DB initialization on app startup (lifespan)
+- FastAPI dependency injection for DB connections
+
+### Priority 3: AKShare THS Provider (Skeleton)
+- Implement `AKShareTHSProvider` with rate limiting
+- Use `asyncio.to_thread()` for sync AKShare calls
+- Token-bucket or simple sleep-based rate limiter
+- Exponential backoff on errors
+
+### What to Defer
+- SSE streaming (Phase 4)
+- Web UI templates (Phase 4)
+- APScheduler jobs (Phase 3 — needs alert engine first)
+- Docker packaging (Phase 5)
+- Industry sector monitoring (nice-to-have)
+
+---
+
+## Key Risks for Builder
+
+1. **AKShare asyncio conflict** — Must use `asyncio.to_thread()` wrapping; direct calls will block FastAPI's event loop or raise "cannot call asyncio.run() from running event loop"
+2. **AKShare API instability** — Some East Money endpoints broken since Feb 2026. THS endpoints still working but may change. DataProvider abstraction is critical insurance.
+3. **Rate limiting from day 1** — No published limits; opaque blocking. Build rate limiter into provider, not as afterthought.
+4. **PushPlus daily cap** — Hard-code 180 limit with DB-tracked counter. Going over 400 attempts = 2-day ban.
 
 ---
 
 ## References
 
 - [AKShare GitHub](https://github.com/akfamily/akshare)
-- [AKShare Documentation](https://akshare.akfamily.xyz/introduction.html)
-- [AKShare Rate Limit Issue #6990](https://github.com/akfamily/akshare/issues/6990)
+- [AKShare Docs v1.18.64](https://akshare.akfamily.xyz/data/stock/stock.html)
+- [AKShare Issue #7051 — Broken endpoints](https://github.com/akfamily/akshare/issues/7051)
+- [AKShare Issue #6990 — Rate limiting](https://github.com/akfamily/akshare/issues/6990)
+- [FastAPI + HTMX Guide (Blake Crosley)](https://blakecrosley.com/guides/fastapi-htmx)
+- [Production FastAPI + HTMX (Medium)](https://medium.com/@sylvesterranjithfrancis/complete-guide-building-production-ready-web-apps-with-fastapi-and-htmx-from-setup-to-deployment-3010b1c8ff5c)
+- [FastAPI + HTMX (TestDriven.io)](https://testdriven.io/courses/fastapi-htmx/fastapi-setup/)
+- [APScheduler + FastAPI (Sentry)](https://sentry.io/answers/schedule-tasks-with-fastapi/)
+- [APScheduler Multi-Worker Discussion](https://github.com/agronholm/apscheduler/discussions/1088)
+- [aiosqlitepool](https://github.com/slaily/aiosqlitepool)
+- [FastAPI Async DB Connections](https://oneuptime.com/blog/post/2026-02-02-fastapi-async-database/view)
+- [SQLite WAL Tutorial 2026](https://tech-insider.org/sqlite-python-tutorial-fts5-wal-mode-2026/)
 - [PushPlus API Docs](https://www.pushplus.plus/doc/guide/api.html)
 - [PushPlus Rate Limits](https://www.pushplus.plus/doc/help/limit.html)
-- [FastAPI + HTMX Guide (Blake Crosley)](https://blakecrosley.com/guides/fastapi-htmx)
-- [Real-Time Dashboards with FastAPI + HTMX (Medium/CodeX)](https://medium.com/codex/building-real-time-dashboards-with-fastapi-and-htmx-01ea458673cb)
-- [FastAPI + HTMX (TestDriven.io)](https://testdriven.io/blog/fastapi-htmx/)
-- [APScheduler + FastAPI (Sentry)](https://sentry.io/answers/schedule-tasks-with-fastapi/)
-- [FastAPI Scheduling Guide (Medium)](https://medium.com/@rasifrazak123/fastapi-scheduling-background-tasks-backgroundtasks-vs-apscheduler-vs-celery-complete-guide-ff90d6be524b)
-- [cn-stock-holidays PyPI](https://pypi.org/project/cn-stock-holidays/)
 - [chinesecalendar PyPI](https://pypi.org/project/chinesecalendar/)
-- [daily_stock_analysis](https://github.com/ZhuLinsen/daily_stock_analysis)
-- [stock-scanner](https://github.com/DR-lin-eng/stock-scanner)
-- [2026 Data Compliance Guide](https://www.cnblogs.com/kobe-tech/p/19774887)
+- [pytest External API Testing](https://pytest-with-eric.com/api-testing/pytest-external-api-testing/)

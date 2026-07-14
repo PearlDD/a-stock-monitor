@@ -1,0 +1,230 @@
+{
+  "project_name": "spec",
+  "generated_at": "2026-07-14 12:16:09.546640",
+  "total_experiments": 0,
+  "keep_count": 0,
+  "revert_count": 0,
+  "error_count": 0,
+  "keep_rate": 0.0,
+  "latest_score": null,
+  "agent_verdicts": [
+    {
+      "role": "researcher",
+      "verdict": "PROCEED",
+      "rationale": "Research covers all critical implementation areas. Key findings on AKShare async conflict (must use asyncio.to_thread), aiosqlite requirement, and HTMX partial patterns are directly actionable. Prior research on rate limiting and PushPlus caps is still valid.",
+      "issues": [
+        "None. Research is focused on implementation patterns, not just theory.",
+        "**Instructions for next step:** Strategist should generate hypotheses to build the project scaffold + core data layer. The project has zero source code \u2014 first hypothesis should be scaffold (pyproject.toml, project structure, MockProvider, basic tests). Must include at least one growth hypothesis (capability_surface)."
+      ],
+      "experiment_id": null
+    },
+    {
+      "role": "strategist",
+      "verdict": "PROCEED",
+      "rationale": "Plan aligns perfectly with the project spec (Phases 2-5). Each phase is well-scoped to one PR. Phase 1 (scaffold) is correctly first. Growth dimension (capability_surface) tagged on Phases 2-5. FEEC ordering correct (FIX for scaffold, EXPLORE for features, EXPLOIT for deployment).",
+      "issues": [
+        "None.",
+        "Deferred items are all genuinely human-dependent (PushPlus token, server provisioning, stability verification, THS validation from target server, annual calendar update)",
+        "No buildable features deferred",
+        "Anti-patterns documented correctly",
+        "Rate limiting, PushPlus 180 cap, WAL mode, trading calendar all included per CEO priorities",
+        "**Growth dimension check:** PASS \u2014 Phases 2-5 all have `capability_surface` growth dimension",
+        "**Scope check:** PASS \u2014 each phase is right-sized, no over-ambitious phases",
+        "**PLAN APPROVED**",
+        "**Approved phases in priority order:**",
+        "1. Phase 1: Project Scaffold + Eval Harness (FIX)",
+        "2. Phase 2: Data Collection Layer (EXPLORE/capability_surface)",
+        "3. Phase 3: Monitoring Engine + Backend Service (EXPLORE/capability_surface)",
+        "4. Phase 4: Web Management UI (EXPLORE/capability_surface)",
+        "5. Phase 5: Docker Deployment (EXPLOIT/capability_surface)"
+      ],
+      "experiment_id": null
+    }
+  ],
+  "observations": [
+    {
+      "source": "observations.md",
+      "content": "# Interaction Study \u2014 spec: Analyzed 7 conversation log(s), 6 relevant messages.",
+      "timestamp": "2026-07-14 12:16:09.544223",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "User Messages (5): - Run standup for /Users/pearl/factory-projects/spec (mode: discover). Read .factory/events.jsonl, reviews, experiments, strategy, and results.tsv. Report sprint status (FRESH or RESUME), completed phas\n- Record the Researcher's findings for the new project /Users/pearl/factory-projects/spec.\nRead .factory/strategy/research.md and .factory/reviews/ceo-verdict-researcher.md.\nWrite research notes to .fac\n- Run standup for /Users/pearl/factory-projects/spec (mode: build). Read .factory/events.jsonl",
+      "timestamp": "2026-07-14 12:16:09.544236",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Errors and Issues (1): - All dimensions score 0 as expected \u2014 no code yet. I need to fix two platform issues before marking as reviewed:",
+      "timestamp": "2026-07-14 12:16:09.544240",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Similar Projects: - [score-spec/spec](https://github.com/score-spec/spec) (8066 stars) \u2014 The Score Specification provides a developer-centric and platform-agnostic Workload specification to improve developer productivity and experience. It eliminates configuration inconsistencies between \n- [ecomfe/spec](https://github.com/ecomfe/spec) (4607 stars) \u2014 This repository contains the specifications.\n- [cloudevents/spec](https://github.com/cloudevents/spec) (5818 stars) \u2014 CloudEvents Specification\n- [github/spec-kit](h",
+      "timestamp": "2026-07-14 12:16:09.544246",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Open GitHub Issues: No open issues found (or not a GitHub repo).",
+      "timestamp": "2026-07-14 12:16:09.544249",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Backlog: Backlog is empty. Focus on new improvements and hygiene.",
+      "timestamp": "2026-07-14 12:16:09.544251",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Observability Coverage: - **Score:** 0.0%\n- **Function coverage:** 0/0 functions have logging (0%)\n- **Total log statements:** 0\n- **Structured logging:** No\n- **Request tracing:** No\n\n### Observability Recommendations\n- No source files found to analyze.",
+      "timestamp": "2026-07-14 12:16:09.544254",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Prior Knowledge (Obsidian): No prior notes found.",
+      "timestamp": "2026-07-14 12:16:09.544256",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": "observations.md",
+      "content": "Hypothesis Budget: **Backlog items: 0** (clear as many as possible this cycle)\n**New items: at most 2** (researcher/strategist may add new ideas)\n**Growth minimum: 2** (at least 2 hypotheses must target growth dimensions)\n\n### Rules\n\n- Read the backlog first. Pick items to implement this cycle \u2014 no cap on clearing.\n- You may add at most 2 NEW items that aren't already in the backlog.\n- At least 2 hypotheses must target growth dimensions (capability_surface, factory_effectiveness, research_grounding, experiment_div",
+      "timestamp": "2026-07-14 12:16:09.544261",
+      "project": "spec",
+      "tags": [
+        "observation"
+      ]
+    },
+    {
+      "source": ".factory/archive/patterns/patterns.md",
+      "content": "---\ntags:\n  - factory\n  - patterns\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# Cross-Project Patterns\n\n## DataProvider Abstraction Layer\nDiscovered in spec project research phase.\nAll successful A-share monitoring projects use a DataProvider abstraction with fallback sources. This pattern enables: (1) testing without network via MockProvider, (2) swapping data sources when APIs break, (3) gradual migration between data providers.\n",
+      "timestamp": "2026-07-14 12:16:09.544857",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/akshare-ths-api.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# AKShare THS Interface \u2014 Usage & Rate Limiting\n\n## API Instability Alert (Feb 2026)\n\nAs of February 2026, **East Money `push2*` API endpoints are broken**:\n- `stock_zh_a_hist()` \u2014 BROKEN (connection abort)\n- `stock_individual_info_em()` \u2014 BROKEN (connection abort)\n\n**Still working**:\n- `stock_zh_a_spot()` \u2014 Real-time A-share market data (5,483+ stocks)\n- `stock_info_a_code_name()` \u2014 A-share stock code/name",
+      "timestamp": "2026-07-14 12:16:09.545035",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/apscheduler-integration.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# APScheduler + FastAPI Integration\n\n## Setup Pattern\n\n- Use `AsyncIOScheduler` with FastAPI's `lifespan` context manager\n- Set timezone to \"Asia/Shanghai\"\n- Define jobs with cron expressions for trading hours\n\n## Critical Considerations\n\n1. **Single worker only** \u2014 scheduler runs in EACH uvicorn worker. For personal tool, single worker is fine. Document this constraint.\n2. **Error handling** \u2014 wrap every j",
+      "timestamp": "2026-07-14 12:16:09.545195",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/fastapi-htmx-sse.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# FastAPI + Jinja2 + HTMX/SSE Architecture\n\n## SSE Real-Time Updates Pattern\n\n- Use `sse-starlette` package for SSE support\n- Stream rendered HTML fragments, not JSON (server-side rendering)\n- Include `Vary: HX-Request` header for CDN/proxy compatibility\n- Dual-response pattern: same route returns full page or fragment based on `HX-Request` header\n- Self-host htmx.min.js (~14KB gzipped) \u2014 no CDN dependency\n",
+      "timestamp": "2026-07-14 12:16:09.545353",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/mock-provider-pattern.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# Mock/Test Provider Pattern\n\n## Design\n\nAbstract `DataProvider` ABC with methods: `get_quote()`, `get_news()`, `get_financials()`, `search_stocks()`.\n\n## MockProvider Features\n\n- `set_price(symbol, price)` \u2014 manually set price for trigger testing\n- `inject_news(symbol, title, keywords)` \u2014 inject fake news items\n- `simulate_day(symbol)` \u2014 replay a full trading day\n\n## Purpose\n\nEnables `--test` CLI mode to r",
+      "timestamp": "2026-07-14 12:16:09.545497",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/pushplus-api.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# PushPlus API Integration\n\n## API Endpoint\n\nPOST http://www.pushplus.plus/send with JSON body (token, title, content, template, channel).\n\n## Rate Limits \u2014 Critical\n\n- **200 messages/day** free tier\n- Exceeding 200: messages silently dropped\n- **Exceeding 400 attempts: account blocked for 2 days**\n- Must track daily send count to avoid the 400-attempt ban\n\n## Recommended Implementation\n\n- Set safety thresh",
+      "timestamp": "2026-07-14 12:16:09.545676",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/similar-projects.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# Similar A-Share Monitoring Projects\n\n## Key Projects Analyzed\n\n| Project | Relevance | Key Takeaway |\n|---------|-----------|--------------|\n| daily_stock_analysis (ZhuLinsen) | High | LLM-driven multi-market analysis with AKShare fallback, multi-channel push (WeChat Work/Telegram/Slack), GitHub Actions scheduling. Modular data providers with fallback chain. |\n| stock-scanner (DR-lin-eng) | Medium | AI-en",
+      "timestamp": "2026-07-14 12:16:09.545880",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/sqlite-schema.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# SQLite Schema Design\n\n## Tables (5 total)\n\n1. **stocks** \u2014 watchlist (symbol, name, industry, is_active)\n2. **alert_rules** \u2014 per-stock rules (price_above/below, change_pct, news_keyword, cooldown)\n3. **price_snapshots** \u2014 indexed by (stock_id, timestamp)\n4. **push_history** \u2014 notification log with PushPlus serial numbers and status\n5. **news_cache** \u2014 deduplicated by content_hash (MD5 of title+url)\n\n## A",
+      "timestamp": "2026-07-14 12:16:09.546028",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/sources/trading-calendar.md",
+      "content": "---\ntags:\n  - factory\n  - source\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# A-Share Trading Calendar & Hours\n\n## Recommended Package\n\n`chinese-calendar` (or `cn-stock-holidays`) \u2014 handles irregular Chinese holidays and \"\u8865\u73ed\" (make-up workdays that are NOT trading days).\n\n## Trading Hours\n\n- Morning: 9:30\u201311:30 Beijing time\n- Afternoon: 13:00\u201315:00 Beijing time\n- Call auction: 9:15\u20139:25 (decide if monitoring this for MVP)\n\n## Pitfalls\n\n- Chinese holidays are irregular (Spring Festi",
+      "timestamp": "2026-07-14 12:16:09.546204",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/spec.md",
+      "content": "---\ntags:\n  - factory\n  - project\n  - spec\nsource: factory-archivist\ndate: 2026-07-14\n---\n\n# Factory: spec (A\u80a1\u667a\u80fd\u76d1\u63a7\u7cfb\u7edf)\n\n## Status\n- **State**: Research complete, strategy pending\n- **Current Score**: 0 (no source code yet)\n- **Experiments Run**: 0\n- **Kept**: 0, **Reverted**: 0\n\n## Project Summary\nPersonal A-share stock monitoring tool. Auto-collects real-time quotes and news via AKShare, pushes WeChat alerts via PushPlus when price targets or news keywords are hit. Web UI for watchlist and alert",
+      "timestamp": "2026-07-14 12:16:09.546374",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    },
+    {
+      "source": ".factory/archive/strategies/spec-2026-07-14.md",
+      "content": "---\ntags:\n  - factory\n  - strategy\n  - spec\ndate: 2026-07-14\nsource: factory-archivist\n---\n\n# Strategy: spec \u2014 2026-07-14\n\n## CEO Verdict: APPROVED\n\nThe CEO reviewed and approved the 5-phase build plan for the A\u80a1\u667a\u80fd\u76d1\u63a7\u7cfb\u7edf (A-Share Intelligent Monitoring System). No issues found. All deferred items are genuinely human-dependent.\n\n## Approved Build Phases\n\n### Phase 1: Project Scaffold + Eval Harness (FIX)\n- **Priority:** high\n- Create foundational project structure: pyproject.toml, FastAPI app facto",
+      "timestamp": "2026-07-14 12:16:09.546568",
+      "project": "spec",
+      "tags": [
+        "archive"
+      ]
+    }
+  ],
+  "verdict_patterns": {
+    "researcher:PROCEED": 1,
+    "strategist:PROCEED": 1
+  }
+}

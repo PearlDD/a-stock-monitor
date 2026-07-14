@@ -17,9 +17,24 @@ date: 2026-07-14
 4. **push_history** — notification log with PushPlus serial numbers and status
 5. **news_cache** — deduplicated by content_hash (MD5 of title+url)
 
+## Async Access — aiosqlite (Required)
+
+Standard `sqlite3` blocks the event loop. Must use `aiosqlite`:
+```python
+db = await aiosqlite.connect("stock_monitor.db")
+await db.execute("PRAGMA journal_mode=WAL")
+await db.execute("PRAGMA synchronous=NORMAL")
+await db.execute("PRAGMA cache_size=10000")  # ~40MB cache
+await db.execute("PRAGMA busy_timeout=5000")  # 5s busy timeout
+```
+Use FastAPI dependency injection: `async def route(db=Depends(get_db))`.
+
+Sources: aiosqlitepool GitHub, FastAPI async DB guide (oneuptime.com), SQLite WAL Tutorial 2026
+
 ## Design Decisions
 
 - **WAL mode**: `PRAGMA journal_mode=WAL` for concurrent read/write (scheduler writes while web UI reads)
+- **busy_timeout**: 5000ms prevents immediate SQLITE_BUSY errors
 - **Price snapshot retention**: 30 days. 20 stocks × 240 min/day ≈ 4800 rows/day — negligible for SQLite
 - **News dedup**: content_hash (MD5 of title+url)
-- **No ORM overhead for reads**: raw SQL for dashboard queries, SQLAlchemy for schema management only
+- **Raw SQL for reads**: no ORM overhead for dashboard queries

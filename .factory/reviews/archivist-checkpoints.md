@@ -1,0 +1,3 @@
+- [x] archivist after research — 2026-07-14T16:09:54Z
+- [x] archivist after research — 2026-07-14T16:16:22Z
+- [x] archivist after strategy — 2026-07-14T16:17:01Z

@@ -1,11 +1,5 @@
-## CEO Review: Researcher Agent
+## CEO Review: Researcher Agent (Improve Mode)
 - **Verdict:** PROCEED
-- **Rationale:** Comprehensive research covering all critical areas. 6 similar projects analyzed. AKShare THS rate limiting risk properly identified (no published limits, 401 anti-crawling in 2026). PushPlus 400-attempt ban trap documented. Architecture pattern validated across similar projects. SQLite schema design, HTMX+SSE patterns, APScheduler integration, and trading calendar handling all covered with code examples.
-- **Issues found:** None. The Researcher also proactively created eval_profile.json and eval/score.py — useful for later Discover phase.
-- **Key priorities for Strategist:**
-  1. Phase 2 (data layer) must include rate limiting from day 1
-  2. PushPlus daily count tracking is critical (180 cap, not 200)
-  3. MockProvider is essential for testing without network
-  4. WAL mode for SQLite concurrent access
-  5. Trading calendar via chinese-calendar package
-- **Instructions for next step:** Strategist should create a phased build plan aligned with Phases 2-5 from the spec. Each phase should be one PR's worth of work. Phase 1 (scaffold + eval harness) is always first.
+- **Rationale:** Research covers all critical implementation areas. Key findings on AKShare async conflict (must use asyncio.to_thread), aiosqlite requirement, and HTMX partial patterns are directly actionable. Prior research on rate limiting and PushPlus caps is still valid.
+- **Issues found:** None. Research is focused on implementation patterns, not just theory.
+- **Instructions for next step:** Strategist should generate hypotheses to build the project scaffold + core data layer. The project has zero source code — first hypothesis should be scaffold (pyproject.toml, project structure, MockProvider, basic tests). Must include at least one growth hypothesis (capability_surface).

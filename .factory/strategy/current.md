@@ -1,122 +1,97 @@
-## Project Specification
+## Strategy — 2026-07-14
 
-# A股智能监控系统 — 项目计划书
+### Observations
+- Current composite score: 0.413
+- Weakest eval dimensions: observability (0.0), capability_surface (0.04), research_grounding (0.32)
+- Last 3 experiments: none — greenfield project with zero source code
+- Pattern: Project has only `factory.md` and `eval/score.py`. No `src/`, no `tests/`, no `pyproject.toml`. Everything must be built from scratch.
+- Backlog contains 5 items but all are human-action/operational items (token setup, server provisioning, stability verification) — none are code-implementable this cycle.
+- CEO directive: scaffold first, then data layer. Must include MockProvider, rate limiting from day 1, structlog.
+- Research report validated: FastAPI+HTMX patterns, AKShare THS interfaces, aiosqlite for async SQLite, APScheduler lifespan pattern, MockProvider abstraction.
+- Guard patterns eval has 2 failures (templates/static glob patterns) — will resolve once real template/static files exist.
 
-## 项目概述
+### Design Space
+| Dimension | Score | Notes |
+|---|---|---|
+| Features | 0 | No code exists |
+| Bug fixes | 0 | Nothing to fix yet |
+| Instrumentation | 0 | No logging at all |
+| Flow changes | 0 | No architecture to refactor |
+| New agents | N/A | Not applicable to this project |
+| Prompt engineering | N/A | Not applicable |
+| Eval improvements | 1 | eval/score.py exists, config_parser scores 1.0 |
+| Knowledge management | 1 | Research report complete, archive sources exist |
+| Infrastructure | 0 | No Docker, no CI |
+| Operational execution | 0 | Nothing to run |
+| Self-evolution | N/A | Not a factory project |
 
-一套个人使用的 A 股监控工具，自动采集实时行情和消息面数据，在股价触及目标价位或出现重要消息时，即时推送通知到手机（微信）。配套 Web 管理界面，方便设置自选股和预警规则。
+**Underserved:** Features, Instrumentation, Infrastructure (all at 0 — but Features is the prerequisite for everything else)
 
-**这是一个长期使用的金融决策辅助工具，可靠性是第一优先级。**
+### Hypotheses
 
-## 核心功能
+#### H1: Project scaffold with app factory, config, data models, and structured logging
+- **Category:** EXPLORE
+- **Type:** code
+- **New:** First build — no backlog items are code-implementable
+- **Growth dimension:** capability_surface, observability
+- **What:** Create the complete project scaffold: `pyproject.toml` with all dependencies, `src/app/` package with app factory (`create_app`), Pydantic Settings config, data models (StockQuote, NewsItem, StockInfo, FinancialSummary dataclasses), DataProvider ABC, MockProvider with `set_price()`/`inject_news()`, structured logging via structlog, `.env.example`, `CLAUDE.md`, and basic tests (`conftest.py` with MockProvider fixture, smoke test, provider tests).
+- **Scope:**
+  - `pyproject.toml` — Python 3.11+, deps: fastapi, uvicorn[standard], jinja2, sse-starlette, python-multipart, akshare, apscheduler, aiosqlite, python-dotenv, chinese-calendar, httpx, structlog. Dev: pytest, pytest-asyncio, pytest-cov, ruff, mypy
+  - `src/app/__init__.py` — package init
+  - `src/app/main.py` — `create_app()` FastAPI factory with structlog middleware
+  - `src/app/config.py` — Pydantic Settings loading from `.env` (PUSHPLUS_TOKEN, DATABASE_PATH, LOG_LEVEL, etc.)
+  - `src/app/models/market.py` — StockQuote, NewsItem, FinancialSummary, StockInfo dataclasses
+  - `src/app/providers/base.py` — DataProvider ABC (get_quote, get_news, get_financials, search_stocks)
+  - `src/app/providers/mock.py` — MockProvider with set_price(), inject_news()
+  - `src/app/logging.py` — structlog configuration (JSON output, request context)
+  - `.env.example` — all env vars with comments
+  - `CLAUDE.md` — project conventions, dev commands, architecture
+  - `tests/__init__.py`, `tests/conftest.py` — MockProvider fixture, async test setup
+  - `tests/test_smoke.py` — import test, create_app test
+  - `tests/test_providers.py` — MockProvider set_price/inject_news/get_quote/get_news tests
+- **Why:** Nothing can be built or evaluated without the scaffold. Smoke test (`from app.main import create_app`) is the eval gate. Structlog from day 1 establishes observability baseline. MockProvider enables all future testing without network calls. Research report validates this exact structure across 6 similar projects.
+- **Expected impact:** capability_surface 0.04→0.15 (modules+public_fns increase), observability 0.0→0.3 (structlog configured, function coverage starts), tests 0.5→0.8 (real test suite detected and passing), lint 0.5→0.8 (ruff configured), smoke_test passes
+- **Priority:** high
 
-**行情监控**：实时跟踪自选股价格、涨跌幅、成交量等指标，交易时段每分钟刷新一次。
+#### H2: Data collection layer — AKShare THS provider, rate limiter, and database schema
+- **Category:** EXPLORE
+- **Type:** code
+- **New:** Builds on H1 scaffold
+- **Growth dimension:** capability_surface
+- **What:** Implement the AKShare THS data provider with async wrapping and rate limiting, SQLite database layer with aiosqlite and WAL mode, and the 5-table schema (stocks, alert_rules, price_snapshots, push_history, news_cache). Includes rate limiter, exponential backoff, and database initialization in app lifespan.
+- **Scope:**
+  - `src/app/providers/akshare_ths.py` — AKShareTHSProvider implementing DataProvider ABC
+    - `asyncio.to_thread()` wrapping for all sync AKShare calls
+    - Uses THS interfaces: `stock_board_industry_name_ths()`, `stock_financial_abstract_ths()`
+    - News via `stock_news_em()` (documented as East Money but only available source)
+    - Structured logging for all requests with timestamps
+  - `src/app/providers/rate_limiter.py` — Async-compatible rate limiter
+    - Configurable min interval per source (default 3s)
+    - asyncio.Lock-based concurrency safety
+    - Exponential backoff on HTTP errors (401, 403, 429, 5xx)
+  - `src/app/database.py` — Database layer
+    - aiosqlite connection with WAL mode, PRAGMA tuning (synchronous=NORMAL, cache_size=10000, busy_timeout=5000)
+    - Schema creation for 5 tables with indexes
+    - FastAPI dependency injection (`get_db`)
+    - DB init in app lifespan
+  - `tests/test_rate_limiter.py` — Rate limiter timing and backoff tests
+  - `tests/test_database.py` — Schema creation, CRUD operations, WAL mode verification
+  - `tests/test_akshare_provider.py` — AKShare provider with mocked `ak` module (no network)
+- **Why:** Data layer is the foundation for the monitoring engine. Rate limiting from day 1 prevents AKShare bans (research found opaque anti-crawling with 401 responses). aiosqlite prevents event loop blocking. WAL mode enables concurrent read/write for scheduler + web UI. All 6 reference projects use this DataProvider abstraction pattern.
+- **Expected impact:** capability_surface 0.15→0.35 (significant new modules, public functions, entry points), observability 0.3→0.5 (logging in provider and DB layers), tests dimension improves (new test files), research_grounding improves (implementing researched patterns with citations)
+- **Priority:** high
 
-**智能预警**：支持三类触发条件 —— 价格到达目标位、涨跌幅超过阈值、出现包含指定关键词的新闻或公告。同一条预警在设定时间窗口内不重复推送。
+### Anti-patterns to Avoid
+- Do not call East Money `stock_zh_a_hist()` or `stock_individual_info_em()` — broken since Feb 2026 (AKShare issue #7051)
+- Do not call AKShare synchronously in async context — must use `asyncio.to_thread()` to avoid event loop blocking
+- Do not skip rate limiting — AKShare has opaque anti-crawling that changes without notice
+- Do not use standard `sqlite3` in async FastAPI — must use `aiosqlite` to prevent event loop blocking
+- Do not hardcode any tokens or API keys — use environment variables per project guards
 
-**消息面采集**：抓取个股新闻、公司公告、行业动态，支持关键词过滤。
+## New Backlog Items
 
-**财务数据**：展示个股基本面信息（市盈率、营收、净利润等），辅助投资判断。
-
-**Web 管理界面**：搜索添加自选股、配置预警规则、查看实时行情看板、浏览推送历史记录。
-
-## 技术选型
-
-| 层级 | 方案 | 选择理由 |
-|------|------|----------|
-| 数据源 | AKShare（同花顺 THS 接口为主） | 免费、无需注册、覆盖行情/财务/新闻。东方财富接口在海外不可用，已验证 THS 接口稳定 |
-| 后端 | Python + FastAPI | A 股数据生态最好，API 开发高效 |
-| 定时任务 | APScheduler | 轻量，支持 cron 表达式 |
-| 数据库 | SQLite | 零部署依赖，个人规模足够 |
-| 推送 | PushPlus（微信公众号推送） | 已验证通过，免费 200 条/天。Token 通过 .env 文件管理 |
-| 前端 | FastAPI + Jinja2 + HTMX | 零 Node.js 依赖，一个 Python 进程搞定，SSE 实时更新，长期维护成本低 |
-| 配置 | python-dotenv + .env 文件 | PushPlus token 等敏感信息放 .env（已 gitignore） |
-| 部署 | Docker | 一键启动，环境隔离 |
-
-## 已验证的约束
-
-- AKShare 东方财富接口在海外网络不可用，必须使用同花顺 (THS) 系列接口
-- PushPlus 免费版每天 200 条推送上限
-- PushPlus Token 已获取并验证可用
-- AKShare THS 接口已验证可拉取：行业板块行情、个股财务摘要、个股新闻
-
-## 开发阶段
-
-### Phase 1 · 推送通道验证 ✅ 已完成
-
-PushPlus 微信推送已验证，HTML 卡片式消息可送达手机。
-
-### Phase 2 · 数据采集层
-
-**目标**：打通 A 股数据源，并建立 Mock 测试框架。
-
-**范围**：
-- 设计 DataProvider 接口（统一的数据获取抽象层）
-- 对接 AKShare 同花顺接口（行业板块、个股财务、个股新闻）
-- 开发 MockProvider（可手动控制价格和新闻，用于测试）
-- 内置请求频率控制，避免被数据源封禁
-
-**验收标准**：Mock 模式下能拉取假数据并触发后续流程。
-
-### Phase 3 · 监控引擎 + 后端服务
-
-**目标**：核心业务逻辑完成，端到端跑通。
-
-**范围**：
-- 数据库设计（自选股、预警规则、推送记录、行情快照）
-- 预警引擎：价格触发 / 涨跌幅触发 / 新闻关键词触发
-- 防重复推送机制（同一预警 N 分钟内只发一次）
-- 交易时段判断（非交易时间不采集不推送）
-- REST API（供前端调用）
-- `--test` 启动模式，使用 MockProvider 运行全流程
-
-**验收标准**：`--test` 模式端到端跑通，从假数据触发预警到手机收到通知。
-
-### Phase 4 · Web 管理界面
-
-**目标**：可视化管理自选股和预警规则。
-
-**范围**：
-- 自选股管理（搜索、添加、删除）
-- 预警规则配置（目标价 / 涨跌幅阈值 / 新闻关键词）
-- 实时行情看板（HTMX + SSE 实时刷新）
-- 推送历史记录查看
-- 手动触发测试推送按钮
-
-**验收标准**：从 Web 页面操作全流程走通。
-
-### Phase 5 · 部署上线
-
-**目标**：系统稳定运行在服务器上。
-
-**范围**：
-- Docker 容器化打包（一条命令启动）
-- 系统健康检查（定时 heartbeat 推送）
-- 崩溃自动重启
-
-**验收标准**：稳定运行 3 个交易日无异常。
-
-## 测试策略
-
-**单元测试**：预警触发逻辑、去重算法、交易时段判断、数据解析。
-
-**集成测试**：数据采集 → 预警引擎 → 推送通知的完整链路。以 MockProvider 为基础，确保不依赖外部服务也能跑通。
-
-**端到端测试**：`--test` 模式启动系统，模拟一天行情，验证整体行为符合预期。
-
-## 风险与应对
-
-| 风险 | 影响 | 应对 |
-|------|------|------|
-| 推送通道不可用 | 收不到预警 | 预留多通道切换能力 |
-| AKShare THS 接口被限频 | 数据中断 | 频率控制 + 降级提示 + 日志 |
-| 数据延迟 > 2 分钟 | 预警不及时 | 可接受，非量化场景 |
-| 节假日误触发 | 错误推送 | 内置中国 A 股交易日历 |
-
-## 进度记录
-
-| 日期 | 完成事项 | 备注 |
-|------|----------|------|
-| 2026-07-14 | Phase 1 推送验证通过 | PushPlus 微信推送，HTML 卡片消息已送达 |
-| 2026-07-14 | AKShare 数据源验证 | THS 接口跑通：行业板块/财务/新闻 |
-
+- Monitoring engine: alert evaluation (price_above/below, change_pct, news_keyword), cooldown-based dedup, trading hours gate via chinese-calendar, APScheduler integration with lifespan pattern
+- PushPlus notification client: POST to pushplus.plus/send, daily count tracking in DB (180/day cap), push history logging, --test CLI mode for end-to-end validation
+- REST API endpoints: stock watchlist CRUD, alert rule CRUD, push history (paginated), test-push endpoint
+- Web management UI: HTMX + Jinja2 dashboard with SSE real-time quotes, watchlist management, alert rule forms, push history view
+- Docker deployment: multi-stage Dockerfile, docker-compose with SQLite volume persistence, /health endpoint, daily heartbeat push, restart policy
