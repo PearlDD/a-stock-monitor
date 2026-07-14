@@ -120,7 +120,10 @@ class TestMockProviderFinancials:
     @pytest.mark.asyncio
     async def test_set_and_get_financials(self, provider: MockProvider):
         fs = FinancialSummary(
-            code="600519", name="贵州茅台", pe_ratio=35.2, market_cap=2.3e12,
+            code="600519",
+            name="贵州茅台",
+            pe_ratio=35.2,
+            market_cap=2.3e12,
         )
         provider.set_financials("600519", fs)
         result = await provider.get_financial_summary("600519")
