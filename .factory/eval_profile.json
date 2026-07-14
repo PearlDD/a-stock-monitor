@@ -1,0 +1,56 @@
+{
+  "project": "spec",
+  "project_type": "web_service",
+  "description": "A\u80a1\u667a\u80fd\u76d1\u63a7\u7cfb\u7edf \u2014 A-Share Smart Stock Monitoring System",
+  "human_reviewed": true,
+  "dimensions": [
+    {
+      "name": "tests",
+      "weight": 0.4,
+      "command": "cd /Users/pearl/factory-projects/spec && uv run pytest tests/ -v --tb=short 2>&1",
+      "pass_pattern": "passed",
+      "fail_pattern": "FAILED|ERROR",
+      "description": "Unit and integration tests for providers, alert engine, dedup, trading hours"
+    },
+    {
+      "name": "type_check",
+      "weight": 0.15,
+      "command": "cd /Users/pearl/factory-projects/spec && uv run mypy src/ --ignore-missing-imports 2>&1",
+      "pass_pattern": "Success|no issues found",
+      "fail_pattern": "error:",
+      "description": "Static type checking with mypy"
+    },
+    {
+      "name": "lint",
+      "weight": 0.15,
+      "command": "cd /Users/pearl/factory-projects/spec && uv run ruff check src/ tests/ 2>&1",
+      "pass_pattern": "All checks passed|no issues found",
+      "fail_pattern": "Found \\d+ error",
+      "description": "Code style and lint checks with ruff"
+    },
+    {
+      "name": "import_check",
+      "weight": 0.1,
+      "command": "cd /Users/pearl/factory-projects/spec && uv run python -c 'from app.main import app; print(\"OK\")' 2>&1",
+      "pass_pattern": "OK",
+      "fail_pattern": "Error|Traceback",
+      "description": "Verify the app can be imported without errors"
+    },
+    {
+      "name": "mock_mode",
+      "weight": 0.15,
+      "command": "cd /Users/pearl/factory-projects/spec && uv run python -c \"import subprocess,sys; p=subprocess.run([sys.executable,'-m','app.main','--test','--dry-run'],capture_output=True,text=True,timeout=10); print(p.stdout); print(p.stderr)\" 2>&1 || true",
+      "pass_pattern": "ready|started|OK",
+      "fail_pattern": "Error|Traceback|FAILED",
+      "description": "Verify --test mode starts successfully with MockProvider"
+    },
+    {
+      "name": "docker_build",
+      "weight": 0.05,
+      "command": "cd /Users/pearl/factory-projects/spec && docker build -t spec-test . 2>&1 | tail -5",
+      "pass_pattern": "Successfully built|exporting to image",
+      "fail_pattern": "ERROR|failed",
+      "description": "Docker image builds without errors (Phase 5)"
+    }
+  ]
+}

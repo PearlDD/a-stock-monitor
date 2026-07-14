@@ -1,0 +1,51 @@
+{
+  "goal": "Build a reliable A-share stock monitoring system that auto-collects real-time quotes and news via AKShare (THS), triggers price/change/keyword alerts, pushes notifications to WeChat via PushPlus, and provides a web management UI.",
+  "scope": [
+    "src/**/*.py",
+    "tests/**/*.py",
+    "templates/**/*.html",
+    "static/**/*.css",
+    "static/**/*.js",
+    "pyproject.toml",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".env.example",
+    "CLAUDE.md"
+  ],
+  "guards": [
+    "Do not delete or overwrite existing tests",
+    "Do not modify files outside the declared scope",
+    "Do not introduce secrets or credentials into the repository",
+    "Do not hardcode PushPlus tokens or any API keys \u2014 use environment variables",
+    "AKShare data calls must use THS (\u540c\u82b1\u987a) interfaces, not East Money (\u4e1c\u65b9\u8d22\u5bcc) for quote data"
+  ],
+  "eval_command": "python3 eval/score.py",
+  "eval_threshold": 0.3,
+  "constraints": [
+    "Prefer small, incremental changes over large rewrites",
+    "Each change should be accompanied by at least one test",
+    "Follow the existing code style and conventions",
+    "Use MockProvider for all tests \u2014 no network calls in CI",
+    "Rate limit AKShare requests: minimum 2-3 seconds between calls",
+    "PushPlus daily cap tracking: treat 180 as safe limit (not 200)",
+    "SQLite with WAL mode for concurrent access"
+  ],
+  "hypothesis_budget": {
+    "min_growth": 2,
+    "max_new": 2
+  },
+  "target_branch": "main",
+  "smoke_test": "cd /Users/pearl/factory-projects/spec && uv run python -c \"from app.main import create_app; app = create_app(); print('OK')\"",
+  "project_eval": [],
+  "eval_weights": {
+    "hygiene": 0.5,
+    "growth": 0.5,
+    "project": 0.0
+  },
+  "research_target": null,
+  "mutable_surfaces": [],
+  "fixed_surfaces": [],
+  "research_constraints": [],
+  "cost_budget": null,
+  "hard_constraints": []
+}
