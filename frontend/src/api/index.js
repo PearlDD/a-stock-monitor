@@ -26,10 +26,23 @@ export const deleteAlert = (id) => api.delete(`/alerts/${id}`)
 // Search
 export const searchStocks = (q) => api.get('/search', { params: { q } })
 
+// Stock detail
+export const getFinancials = (code) => api.get(`/stocks/${code}/financials`)
+export const getPriceHistory = (code, days = 5) => api.get(`/stocks/${code}/history`, { params: { days } })
+export const getAnnouncements = (code, limit = 10) => api.get(`/stocks/${code}/announcements`, { params: { limit } })
+
+// AI
+export const analyzeStock = (code) => api.post(`/ai/analyze/${code}`)
+export const summarizeNews = (code) => api.post(`/ai/summarize-news/${code}`)
+export const pushAnalysis = (code) => api.post(`/ai/push-analysis/${code}`)
+export const screenStocks = (data) => api.post('/ai/screen', data)
+export const getPresets = () => api.get('/ai/presets')
+
 // Settings
 export const getSettings = () => api.get('/settings')
 export const updateSettings = (data) => api.post('/settings', data)
 export const testPush = () => api.post('/test-push')
 export const getPushQuota = () => api.get('/push-quota')
+export const getSetupGuide = () => api.get('/setup')
 
 export default api

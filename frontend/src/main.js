@@ -6,8 +6,10 @@ import App from './App.vue'
 const routes = [
   { path: '/', name: 'home', component: () => import('./views/Home.vue') },
   { path: '/stock/:code', name: 'detail', component: () => import('./views/StockDetail.vue') },
+  { path: '/screen', name: 'screener', component: () => import('./views/Screener.vue') },
   { path: '/alerts', name: 'alerts', component: () => import('./views/Alerts.vue') },
   { path: '/settings', name: 'settings', component: () => import('./views/Settings.vue') },
+  { path: '/setup', name: 'setup', component: () => import('./views/Setup.vue') },
 ]
 
 const router = createRouter({

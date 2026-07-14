@@ -185,14 +185,17 @@ async def get_stock_info(code: str) -> StockInfo | None:
     try:
         import akshare as ak
 
-        df = await _retry_akshare(ak.stock_individual_info_em, symbol=code)
-        info_dict = dict(zip(df["item"], df["value"]))
+        df = await _retry_akshare(ak.stock_zh_a_spot_em)
+        row = df[df["代码"] == code]
+        if row.empty:
+            return None
+        r = row.iloc[0]
         info = StockInfo(
             code=code,
-            name=str(info_dict.get("股票简称", "")),
-            sector=str(info_dict.get("行业", "")),
-            market=str(info_dict.get("上市时间", ""))[:4],
-            list_date=str(info_dict.get("上市时间", "")),
+            name=str(r.get("名称", "")),
+            sector="",
+            market="",
+            list_date="",
         )
         await cache.set(cache_key, info, FINANCIALS_TTL)
         log.info("stock_info_fetched", code=code)
@@ -246,6 +249,87 @@ async def get_stock_news(code: str, limit: int = 10) -> list[NewsItem]:
         log.error("news_fetch_failed", code=code, exc_info=True)
         cached = await cache.get(cache_key)
         return (cached or [])[:limit]
+
+
+async def get_price_history(code: str, days: int = 5) -> list[dict]:
+    """Fetch recent daily price history via ak.stock_zh_a_hist()."""
+    cache = get_cache()
+    cache_key = f"history:{code}:{days}"
+
+    if _circuit_breaker.is_open:
+        cached = await cache.get(cache_key)
+        return cached or []
+
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
+    try:
+        import akshare as ak
+
+        df = await _retry_akshare(
+            ak.stock_zh_a_hist,
+            symbol=code,
+            period="daily",
+            adjust="qfq",
+        )
+        if df is None or df.empty:
+            return []
+        rows = df.tail(days)
+        history = []
+        for _, row in rows.iterrows():
+            history.append(
+                {
+                    "date": str(row.get("日期", "")),
+                    "open": float(row.get("开盘", 0) or 0),
+                    "close": float(row.get("收盘", 0) or 0),
+                    "high": float(row.get("最高", 0) or 0),
+                    "low": float(row.get("最低", 0) or 0),
+                    "volume": float(row.get("成交量", 0) or 0),
+                }
+            )
+        await cache.set(cache_key, history, QUOTE_TTL * 10)
+        log.info("price_history_fetched", code=code, days=len(history))
+        return history
+    except Exception:
+        log.error("price_history_failed", code=code, exc_info=True)
+        return []
+
+
+async def get_announcements(code: str, limit: int = 10) -> list[dict]:
+    """Fetch company announcements via ak.stock_notice_report()."""
+    cache = get_cache()
+    cache_key = f"announcements:{code}"
+
+    if _circuit_breaker.is_open:
+        cached = await cache.get(cache_key)
+        return (cached or [])[:limit]
+
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached[:limit]  # type: ignore[return-value]
+
+    try:
+        import akshare as ak
+
+        df = await _retry_akshare(ak.stock_notice_report, symbol=code)
+        if df is None or df.empty:
+            return []
+        items = []
+        for _, row in df.head(50).iterrows():
+            items.append(
+                {
+                    "title": str(row.get("公告标题", row.get("标题", ""))),
+                    "date": str(row.get("公告日期", row.get("日期", ""))),
+                    "url": str(row.get("公告链接", row.get("链接", ""))),
+                }
+            )
+        await cache.set(cache_key, items, NEWS_TTL)
+        log.info("announcements_fetched", code=code, count=len(items))
+        return items[:limit]
+    except Exception:
+        log.error("announcements_failed", code=code, exc_info=True)
+        return []
 
 
 async def get_financial_summary(code: str) -> FinancialSummary | None:

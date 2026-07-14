@@ -39,6 +39,7 @@ def register_jobs(
     digest_func,  # type: ignore[no-untyped-def]
     refresh_calendar_func,  # type: ignore[no-untyped-def]
     health_check_func,  # type: ignore[no-untyped-def]
+    check_news_func=None,  # type: ignore[no-untyped-def]
 ) -> None:
     """Register all scheduled jobs.
 
@@ -113,5 +114,20 @@ def register_jobs(
         name="Daily system health check",
         replace_existing=True,
     )
+
+    # News break alerts every 5 minutes during trading hours
+    if check_news_func:
+        scheduler.add_job(
+            check_news_func,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour="9-11,13-14",
+                minute="*/5",
+                timezone=SHANGHAI_TZ_STR,
+            ),
+            id="check_news",
+            name="Check breaking news",
+            replace_existing=True,
+        )
 
     log.info("scheduler_jobs_registered", job_count=len(scheduler.get_jobs()))

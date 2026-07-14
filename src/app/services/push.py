@@ -1,7 +1,7 @@
 """PushPlus WeChat notification client.
 
 Sends alerts via HTTP POST to http://www.pushplus.plus/send
-Daily cap: warn at 150, hard-stop at 195.
+Daily cap: warn at 150, hard-stop at 180.
 Message batching: combines >3 alerts within 1 minute.
 """
 
@@ -19,7 +19,7 @@ from app.services.cache import get_cache
 log = get_logger("push")
 
 PUSHPLUS_URL = "http://www.pushplus.plus/send"
-DAILY_CAP = 195
+DAILY_CAP = 180
 DAILY_WARN = 150
 BATCH_WINDOW_SECONDS = 60
 BATCH_THRESHOLD = 3
@@ -120,7 +120,7 @@ class PushPlusClient:
                 # Schedule flush after batch window
                 now = time.monotonic()
                 if now - self._last_flush > BATCH_WINDOW_SECONDS:
-                    asyncio.get_event_loop().call_later(
+                    asyncio.get_running_loop().call_later(
                         BATCH_WINDOW_SECONDS,
                         lambda: asyncio.ensure_future(self.flush()),
                     )

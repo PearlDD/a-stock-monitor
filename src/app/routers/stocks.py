@@ -76,3 +76,36 @@ async def get_stock_news(code: str, limit: int = Query(10, ge=1, le=50)):
             for n in items
         ]
     }
+
+
+@router.get("/{code}/financials")
+async def get_financials(code: str):
+    """Get key financial metrics for a stock."""
+    summary = await market_data.get_financial_summary(code)
+    if summary is None:
+        return {"financials": None}
+    return {
+        "financials": {
+            "code": summary.code,
+            "name": summary.name,
+            "market_cap": summary.market_cap,
+            "pe_ratio": summary.pe_ratio,
+            "pb_ratio": summary.pb_ratio,
+            "revenue": summary.revenue,
+            "net_profit": summary.net_profit,
+        }
+    }
+
+
+@router.get("/{code}/history")
+async def get_price_history(code: str, days: int = Query(5, ge=1, le=30)):
+    """Get recent daily price history for a stock."""
+    history = await market_data.get_price_history(code, days=days)
+    return {"history": history}
+
+
+@router.get("/{code}/announcements")
+async def get_announcements(code: str, limit: int = Query(10, ge=1, le=50)):
+    """Get company announcements for a stock."""
+    items = await market_data.get_announcements(code, limit=limit)
+    return {"announcements": items}

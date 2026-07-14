@@ -11,6 +11,7 @@
           昨收 ¥{{ formatPrice(quote.prev_close) }}
         </span>
       </div>
+      <div class="data-delay">数据可能存在延迟，仅供参考</div>
     </div>
 
     <!-- Tabs -->
@@ -38,39 +39,115 @@
             <span>{{ formatAmount(quote.amount) }}</span>
           </div>
         </div>
+
+        <!-- Financial Summary Card -->
+        <div v-if="financials" class="financial-card">
+          <div class="card-title">财务摘要</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">总市值</span>
+              <span>{{ formatAmount(financials.market_cap) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">市盈率</span>
+              <span>{{ financials.pe_ratio ? financials.pe_ratio.toFixed(1) : '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">市净率</span>
+              <span>{{ financials.pb_ratio ? financials.pb_ratio.toFixed(2) : '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">营收</span>
+              <span>{{ formatAmount(financials.revenue * 10000) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">净利润</span>
+              <span>{{ formatAmount(financials.net_profit * 10000) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5-day price chart -->
+        <div class="chart-section" v-if="history.length">
+          <div class="card-title">近5日走势</div>
+          <canvas ref="chartCanvas" width="340" height="160"></canvas>
+        </div>
       </van-tab>
 
       <van-tab title="资讯">
-        <van-empty v-if="!news.length" description="暂无资讯" />
-        <div v-for="item in news" :key="item.url" class="news-item">
-          <a :href="item.url" target="_blank" rel="noopener">{{ item.title }}</a>
-          <div class="news-meta">
-            {{ item.source }} · {{ formatTime(item.publish_time) }}
+        <van-list
+          v-model:loading="newsLoading"
+          :finished="newsFinished"
+          finished-text="没有更多了"
+          @load="loadMoreNews"
+        >
+          <van-empty v-if="!news.length && !newsLoading" description="暂无资讯" />
+          <div v-for="item in news" :key="item.url" class="news-item">
+            <a :href="item.url" target="_blank" rel="noopener">{{ item.title }}</a>
+            <div class="news-meta">
+              {{ item.source }} · {{ formatTime(item.publish_time) }}
+            </div>
           </div>
+        </van-list>
+      </van-tab>
+
+      <van-tab title="公告">
+        <van-empty v-if="!announcements.length" description="暂无公告" />
+        <div v-for="(item, idx) in announcements" :key="idx" class="news-item">
+          <a v-if="item.url" :href="item.url" target="_blank" rel="noopener">{{ item.title }}</a>
+          <span v-else>{{ item.title }}</span>
+          <div class="news-meta">{{ item.date }}</div>
         </div>
       </van-tab>
 
       <van-tab title="分析">
-        <div class="info-grid" v-if="info">
-          <div class="info-item">
-            <span class="label">行业</span>
-            <span>{{ info.sector || '-' }}</span>
+        <div class="analysis-section">
+          <van-button
+            type="primary" block round
+            :loading="analyzing"
+            loading-text="分析中..."
+            @click="onAnalyze"
+          >
+            一键分析
+          </van-button>
+
+          <div v-if="analysis" class="analysis-result">
+            <div class="analysis-text">{{ analysis }}</div>
+            <van-button
+              size="small" type="success" round
+              :loading="pushing"
+              @click="onPushAnalysis"
+              style="margin-top: 12px;"
+            >
+              推送到微信
+            </van-button>
           </div>
-          <div class="info-item">
-            <span class="label">上市日期</span>
-            <span>{{ info.list_date || '-' }}</span>
+
+          <div class="info-grid" v-if="info" style="margin-top: 12px;">
+            <div class="info-item">
+              <span class="label">行业</span>
+              <span>{{ info.sector || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">上市日期</span>
+              <span>{{ info.list_date || '-' }}</span>
+            </div>
           </div>
         </div>
-        <van-empty v-else description="暂无分析数据" />
       </van-tab>
     </van-tabs>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { getQuotes, getStockInfo, getStockNews } from '../api'
+import { showToast } from 'vant'
+import {
+  getQuotes, getStockInfo, getStockNews,
+  getFinancials, getPriceHistory, getAnnouncements,
+  analyzeStock, pushAnalysis as pushAnalysisApi
+} from '../api'
 
 const route = useRoute()
 const code = route.params.code
@@ -80,6 +157,16 @@ const activeTab = ref(0)
 const quote = ref({ price: 0, change_pct: 0, prev_close: 0, open: 0, high: 0, low: 0, volume: 0, amount: 0 })
 const news = ref([])
 const info = ref(null)
+const financials = ref(null)
+const history = ref([])
+const announcements = ref([])
+const analysis = ref('')
+const analyzing = ref(false)
+const pushing = ref(false)
+const newsLoading = ref(false)
+const newsFinished = ref(false)
+const newsPage = ref(0)
+const chartCanvas = ref(null)
 
 const priceClass = ref('price-flat')
 
@@ -94,11 +181,22 @@ const fetchQuote = async () => {
   } catch (e) { /* ignore */ }
 }
 
-const fetchNews = async () => {
+const loadMoreNews = async () => {
   try {
-    const { data } = await getStockNews(code, 20)
-    news.value = data.news
-  } catch (e) { /* ignore */ }
+    newsLoading.value = true
+    const limit = 20
+    const { data } = await getStockNews(code, limit + newsPage.value * limit)
+    const all = data.news
+    if (all.length <= news.value.length || all.length < limit) {
+      newsFinished.value = true
+    }
+    news.value = all
+    newsPage.value++
+  } catch (e) {
+    newsFinished.value = true
+  } finally {
+    newsLoading.value = false
+  }
 }
 
 const fetchInfo = async () => {
@@ -106,6 +204,107 @@ const fetchInfo = async () => {
     const { data } = await getStockInfo(code)
     info.value = data.info
   } catch (e) { /* ignore */ }
+}
+
+const fetchFinancials = async () => {
+  try {
+    const { data } = await getFinancials(code)
+    financials.value = data.financials
+  } catch (e) { /* ignore */ }
+}
+
+const fetchHistory = async () => {
+  try {
+    const { data } = await getPriceHistory(code, 5)
+    history.value = data.history || []
+    await nextTick()
+    drawChart()
+  } catch (e) { /* ignore */ }
+}
+
+const fetchAnnouncements = async () => {
+  try {
+    const { data } = await getAnnouncements(code, 20)
+    announcements.value = data.announcements || []
+  } catch (e) { /* ignore */ }
+}
+
+const drawChart = () => {
+  const canvas = chartCanvas.value
+  if (!canvas || !history.value.length) return
+  const ctx = canvas.getContext('2d')
+  const w = canvas.width
+  const h = canvas.height
+  const padding = { top: 10, right: 10, bottom: 25, left: 50 }
+  const plotW = w - padding.left - padding.right
+  const plotH = h - padding.top - padding.bottom
+
+  ctx.clearRect(0, 0, w, h)
+
+  const closes = history.value.map(d => d.close)
+  const minP = Math.min(...closes) * 0.998
+  const maxP = Math.max(...closes) * 1.002
+  const range = maxP - minP || 1
+
+  // Draw grid
+  ctx.strokeStyle = '#eee'
+  ctx.lineWidth = 0.5
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (plotH / 4) * i
+    ctx.beginPath()
+    ctx.moveTo(padding.left, y)
+    ctx.lineTo(w - padding.right, y)
+    ctx.stroke()
+    ctx.fillStyle = '#999'
+    ctx.font = '10px sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText((maxP - (range / 4) * i).toFixed(2), padding.left - 4, y + 3)
+  }
+
+  // Draw line
+  ctx.beginPath()
+  ctx.strokeStyle = closes[closes.length - 1] >= closes[0] ? '#e74c3c' : '#2ecc71'
+  ctx.lineWidth = 2
+  for (let i = 0; i < closes.length; i++) {
+    const x = padding.left + (plotW / (closes.length - 1 || 1)) * i
+    const y = padding.top + plotH - ((closes[i] - minP) / range) * plotH
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.stroke()
+
+  // Draw dates
+  ctx.fillStyle = '#999'
+  ctx.font = '10px sans-serif'
+  ctx.textAlign = 'center'
+  history.value.forEach((d, i) => {
+    const x = padding.left + (plotW / (closes.length - 1 || 1)) * i
+    ctx.fillText(d.date.slice(5), x, h - 5)
+  })
+}
+
+const onAnalyze = async () => {
+  analyzing.value = true
+  try {
+    const { data } = await analyzeStock(code)
+    analysis.value = data.analysis || data.error || '分析失败'
+  } catch (e) {
+    showToast('分析请求失败')
+  } finally {
+    analyzing.value = false
+  }
+}
+
+const onPushAnalysis = async () => {
+  pushing.value = true
+  try {
+    const { data } = await pushAnalysisApi(code)
+    showToast(data.status === 'ok' ? '已推送到微信' : (data.message || '推送失败'))
+  } catch (e) {
+    showToast('推送失败')
+  } finally {
+    pushing.value = false
+  }
 }
 
 const formatPrice = (p) => (p || 0).toFixed(2)
@@ -132,8 +331,10 @@ const formatTime = (t) => {
 
 onMounted(() => {
   fetchQuote()
-  fetchNews()
   fetchInfo()
+  fetchFinancials()
+  fetchHistory()
+  fetchAnnouncements()
 })
 </script>
 
@@ -144,6 +345,7 @@ onMounted(() => {
 }
 .current-price { font-size: 32px; font-weight: 700; }
 .price-info { font-size: 14px; margin-top: 4px; color: #666; }
+.data-delay { font-size: 11px; color: #bbb; margin-top: 4px; }
 .price-up { color: #e74c3c; }
 .price-down { color: #2ecc71; }
 .price-flat { color: #999; }
@@ -164,6 +366,20 @@ onMounted(() => {
   align-items: center;
 }
 .info-item .label { color: #999; }
+.financial-card {
+  margin: 12px 0;
+}
+.card-title {
+  padding: 12px 16px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+.chart-section {
+  background: #fff;
+  padding: 0 16px 16px;
+  margin: 8px 0;
+}
 .news-item {
   padding: 14px 16px;
   border-bottom: 1px solid #f0f0f0;
@@ -176,4 +392,17 @@ onMounted(() => {
   line-height: 1.5;
 }
 .news-meta { font-size: 12px; color: #999; margin-top: 6px; }
+.analysis-section { padding: 16px; }
+.analysis-result {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+.analysis-text {
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: #333;
+}
 </style>

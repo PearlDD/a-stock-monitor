@@ -32,10 +32,19 @@
       />
     </van-cell-group>
 
+    <van-cell-group title="帮助" inset style="margin-top: 12px;">
+      <van-cell title="配置指南" is-link to="/setup" />
+    </van-cell-group>
+
     <van-cell-group title="系统信息" inset style="margin-top: 12px;">
       <van-cell title="时区" value="Asia/Shanghai" />
-      <van-cell title="版本" value="0.1.0" />
+      <van-cell title="版本" value="0.2.0" />
+      <van-cell title="数据来源" value="AKShare (THS)" />
     </van-cell-group>
+
+    <div class="disclaimer">
+      ⚠️ 数据可能存在延迟，所有信息仅供参考，不构成投资建议
+    </div>
   </div>
 </template>
 
@@ -46,7 +55,7 @@ import { getSettings, updateSettings, testPush, getPushQuota } from '../api'
 
 const token = ref('')
 const testing = ref(false)
-const quota = ref({ used: 0, limit: 195, remaining: 195 })
+const quota = ref({ used: 0, limit: 180, remaining: 180 })
 
 const quotaPct = computed(() => {
   if (!quota.value.limit) return 0
@@ -59,14 +68,18 @@ const fetchSettings = async () => {
     if (data.pushplus_token_set) {
       token.value = '••••••••'
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    showToast('获取设置失败')
+  }
 }
 
 const fetchQuota = async () => {
   try {
     const { data } = await getPushQuota()
     quota.value = data
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    showToast('获取配额失败')
+  }
 }
 
 const saveToken = async () => {
@@ -74,8 +87,12 @@ const saveToken = async () => {
     showToast('请输入有效Token')
     return
   }
-  await updateSettings({ pushplus_token: token.value })
-  showToast('Token已保存')
+  try {
+    await updateSettings({ pushplus_token: token.value })
+    showToast('Token已保存')
+  } catch (e) {
+    showToast('保存失败，请重试')
+  }
 }
 
 const onTestPush = async () => {
@@ -85,7 +102,7 @@ const onTestPush = async () => {
     showToast('测试消息已发送')
     await fetchQuota()
   } catch (e) {
-    showToast('发送失败，请检查Token')
+    showToast('发送失败，请检查Token是否正确')
   } finally {
     testing.value = false
   }
@@ -100,5 +117,11 @@ onMounted(() => {
 <style scoped>
 .settings {
   padding-top: 8px;
+}
+.disclaimer {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  padding: 20px 16px;
 }
 </style>

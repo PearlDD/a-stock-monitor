@@ -48,6 +48,22 @@ class AlertEngine:
 
     def __init__(self) -> None:
         self._previous_states: dict[str, dict[int, bool]] = {}
+        self._volume_history: dict[str, list[float]] = {}
+        self._volume_window = 20  # rolling window size for average
+
+    def record_volume(self, code: str, volume: float) -> None:
+        """Record a volume observation for rolling average calculation."""
+        history = self._volume_history.setdefault(code, [])
+        history.append(volume)
+        if len(history) > self._volume_window:
+            self._volume_history[code] = history[-self._volume_window :]
+
+    def get_avg_volume(self, code: str) -> float:
+        """Get the rolling average volume for a stock."""
+        history = self._volume_history.get(code, [])
+        if not history:
+            return 0.0
+        return sum(history) / len(history)
 
     async def evaluate(
         self,
@@ -107,6 +123,11 @@ class AlertEngine:
                 threshold=rule.threshold,
             )
 
+        # Record volumes AFTER evaluation (so spike isn't counted in its own avg)
+        for q in quotes:
+            if q.volume > 0:
+                self.record_volume(q.code, q.volume)
+
         return triggered
 
     def _check_condition(self, quote: StockQuote, rule: AlertRule) -> bool:
@@ -135,7 +156,10 @@ class AlertEngine:
 
         elif rule.alert_type == "volume_spike":
             # threshold is the multiplier (e.g., 3 = 3x average volume)
-            return rule.threshold > 0 and quote.volume > 0
+            avg_vol = self.get_avg_volume(quote.code)
+            if avg_vol <= 0 or quote.volume <= 0:
+                return False
+            return quote.volume > rule.threshold * avg_vol
 
         return False
 
@@ -146,7 +170,8 @@ class AlertEngine:
         elif rule.alert_type in ("price_target", "limit_up", "limit_down"):
             return quote.price
         elif rule.alert_type == "volume_spike":
-            return quote.volume
+            avg_vol = self.get_avg_volume(quote.code)
+            return quote.volume / avg_vol if avg_vol > 0 else 0.0
         return 0.0
 
     def reset_state(self, stock_code: str | None = None) -> None:

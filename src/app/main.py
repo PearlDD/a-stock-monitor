@@ -9,7 +9,13 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.logging import configure_logging, get_logger
+from app.logging import (
+    bind_request_id,
+    clear_request_context,
+    configure_logging,
+    generate_request_id,
+    get_logger,
+)
 
 
 @asynccontextmanager
@@ -177,8 +183,65 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
 
         log.info("daily_health_check", status="complete", failures=len(failures))
 
+    async def check_news() -> None:
+        """Check for breaking news every 5 minutes, dedup by headline hash."""
+        import hashlib
+
+        from app.database import get_db
+        from app.services.market_data import get_stock_news
+        from app.services.push import PushPlusClient
+        from app.services.trading_calendar import should_poll
+
+        if not await should_poll():
+            return
+
+        settings = get_settings()
+        if not settings.pushplus_token:
+            return
+
+        async with get_db() as db:
+            cursor = await db.execute("SELECT code, name FROM stocks")
+            stocks = await cursor.fetchall()
+
+        if not stocks:
+            return
+
+        new_alerts: list[tuple[str, str]] = []
+        for stock in stocks:
+            code = stock["code"]
+            name = stock["name"]
+            news_items = await get_stock_news(code, limit=5)
+            for item in news_items:
+                h = hashlib.md5(item.title.encode()).hexdigest()  # noqa: S324
+                async with get_db() as db:
+                    cursor = await db.execute(
+                        "SELECT 1 FROM news_alerts_seen WHERE headline_hash = ?",
+                        (h,),
+                    )
+                    if await cursor.fetchone():
+                        continue
+                    await db.execute(
+                        "INSERT OR IGNORE INTO news_alerts_seen"
+                        " (headline_hash, stock_code, title) VALUES (?, ?, ?)",
+                        (h, code, item.title),
+                    )
+                    await db.commit()
+                new_alerts.append((name, item.title))
+
+        if not new_alerts:
+            return
+
+        client = PushPlusClient(settings.pushplus_token)
+        lines = ["📰 资讯快报\n"]
+        for name, title in new_alerts[:10]:
+            lines.append(f"• {name}: {title}")
+        lines.append("\n⚠️ 以上信息仅供参考，不构成投资建议")
+        await client.send_alert("📰 资讯快报", "\n".join(lines))
+        log.info("news_alerts_sent", count=len(new_alerts))
+
     register_jobs(
-        scheduler, poll_and_alert, daily_digest, refresh_calendar, health_check
+        scheduler, poll_and_alert, daily_digest, refresh_calendar, health_check,
+        check_news,
     )
     scheduler.start()
     log.info("scheduler_started")
@@ -206,14 +269,15 @@ def create_app() -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # Structlog request logging middleware
+    # Structlog request logging middleware with request_id tracing
     @application.middleware("http")
     async def log_requests(request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
+        request_id = generate_request_id()
+        bind_request_id(request_id)
         start = time.monotonic()
         response: Response = await call_next(request)
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)
@@ -224,6 +288,8 @@ def create_app() -> FastAPI:
             status=response.status_code,
             duration_ms=elapsed_ms,
         )
+        response.headers["X-Request-ID"] = request_id
+        clear_request_context()
         return response
 
     @application.get("/health")
@@ -231,11 +297,13 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Register API routers
+    from app.routers.ai import router as ai_router
     from app.routers.stocks import router as stocks_router
     from app.routers.watchlist import router as watchlist_router
 
     application.include_router(stocks_router)
     application.include_router(watchlist_router)
+    application.include_router(ai_router)
 
     return application
 

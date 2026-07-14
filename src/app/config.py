@@ -14,9 +14,6 @@ class Settings(BaseSettings):
     # DeepSeek API (OpenAI-compatible)
     deepseek_api_key: str = ""
 
-    # Redis for caching and dedup
-    redis_url: str = "redis://localhost:6379/0"
-
     # SQLite database
     database_url: str = "sqlite+aiosqlite:///data/stock_monitor.db"
 

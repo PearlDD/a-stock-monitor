@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.models.market import FinancialSummary, NewsItem, StockInfo, StockQuote
 from app.providers.base import DataProvider
 
-_SHANGHAI_OFFSET = timezone(offset=__import__("datetime").timedelta(hours=8))
+_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 class MockProvider(DataProvider):
@@ -19,6 +20,8 @@ class MockProvider(DataProvider):
         self._news: dict[str, list[NewsItem]] = {}
         self._info: dict[str, StockInfo] = {}
         self._financials: dict[str, FinancialSummary] = {}
+        self._quote_extras: dict[str, dict] = {}
+        self._volumes: dict[str, float] = {}
 
     # -- Test helpers --
 
@@ -30,6 +33,7 @@ class MockProvider(DataProvider):
         name: str = "",
         change_pct: float = 0.0,
         prev_close: float = 0.0,
+        volume: float = 0.0,
     ) -> None:
         """Set or update the price for a stock code."""
         self._prices[code] = price
@@ -37,12 +41,12 @@ class MockProvider(DataProvider):
             self._names[code] = name
         if not self._names.get(code):
             self._names[code] = f"Mock-{code}"
-        # Store extra fields for quote construction
-        self._quote_extras: dict[str, dict] = getattr(self, "_quote_extras", {})
         self._quote_extras[code] = {
             "change_pct": change_pct,
             "prev_close": prev_close or price,
         }
+        if volume > 0:
+            self._volumes[code] = volume
 
     def inject_news(self, code: str, items: list[NewsItem]) -> None:
         """Inject news items for a stock code."""
@@ -59,22 +63,22 @@ class MockProvider(DataProvider):
     # -- DataProvider implementation --
 
     async def get_realtime_quotes(self, codes: list[str]) -> list[StockQuote]:
-        now = datetime.now(tz=_SHANGHAI_OFFSET)
+        now = datetime.now(tz=_SHANGHAI_TZ)
         quotes: list[StockQuote] = []
-        extras = getattr(self, "_quote_extras", {})
         for code in codes:
             if code not in self._prices:
                 continue
             price = self._prices[code]
-            ext = extras.get(code, {})
+            ext = self._quote_extras.get(code, {})
             prev_close = ext.get("prev_close", price)
+            volume = self._volumes.get(code, 0.0)
             quotes.append(
                 StockQuote(
                     code=code,
                     name=self._names.get(code, f"Mock-{code}"),
                     price=price,
                     change_pct=ext.get("change_pct", 0.0),
-                    volume=0.0,
+                    volume=volume,
                     amount=0.0,
                     high=price,
                     low=price,

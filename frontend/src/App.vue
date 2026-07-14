@@ -3,6 +3,7 @@
     <router-view />
     <van-tabbar v-model="active" route>
       <van-tabbar-item to="/" icon="home-o">自选股</van-tabbar-item>
+      <van-tabbar-item to="/screen" icon="search">选股</van-tabbar-item>
       <van-tabbar-item to="/alerts" icon="bell">提醒</van-tabbar-item>
       <van-tabbar-item to="/settings" icon="setting-o">设置</van-tabbar-item>
     </van-tabbar>

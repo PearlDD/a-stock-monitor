@@ -73,23 +73,29 @@ class AKShareTHSProvider(DataProvider):
         return quotes
 
     async def get_stock_info(self, code: str) -> StockInfo | None:
-        """Fetch basic stock info via ak.stock_individual_info_em()."""
+        """Fetch basic stock info from spot data (stock_zh_a_spot_em).
+
+        Avoids banned stock_individual_info_em() — uses spot data instead.
+        """
         limiter = get_rate_limiter()
         await limiter.acquire()
 
         try:
             import akshare as ak
 
-            df = await asyncio.to_thread(ak.stock_individual_info_em, symbol=code)
+            df = await asyncio.to_thread(ak.stock_zh_a_spot_em)
             limiter.record_success()
 
-            info_dict = dict(zip(df["item"], df["value"]))
+            row = df[df["代码"] == code]
+            if row.empty:
+                return None
+            r = row.iloc[0]
             info = StockInfo(
                 code=code,
-                name=str(info_dict.get("股票简称", "")),
-                sector=str(info_dict.get("行业", "")),
-                market=str(info_dict.get("上市时间", ""))[:4],
-                list_date=str(info_dict.get("上市时间", "")),
+                name=str(r.get("名称", "")),
+                sector="",
+                market="",
+                list_date="",
             )
             log.info("stock_info_fetched", code=code)
             return info
