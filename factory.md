@@ -24,7 +24,6 @@ Build a reliable A-share stock monitoring system that auto-collects real-time qu
 - README.md
 - factory.md
 - eval/score.py
-- .factory/**
 
 ## Guards
 
