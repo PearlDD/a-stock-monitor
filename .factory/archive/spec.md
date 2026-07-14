@@ -10,15 +10,22 @@ date: 2026-07-14
 # Factory: spec (A股智能监控系统)
 
 ## Status
-- **State**: Research complete, strategy pending
-- **Current Score**: 0 (no source code yet)
-- **Experiments Run**: 0
-- **Kept**: 0, **Reverted**: 0
+- **State**: Phase 2 complete (Data Collection Layer)
+- **Current Score**: 0.493 (post-Phase 2 eval)
+- **Experiments Run**: 2
+- **Kept**: 2, **Reverted**: 0
 
 ## Project Summary
 Personal A-share stock monitoring tool. Auto-collects real-time quotes and news via AKShare, pushes WeChat alerts via PushPlus when price targets or news keywords are hit. Web UI for watchlist and alert management.
 
 Stack: Python + FastAPI + AKShare (THS) + SQLite + HTMX/SSE + APScheduler + Docker.
+
+## Strategy (Approved 2026-07-14)
+CEO approved 2-hypothesis plan with priority ordering H1 → H2:
+- **H1:** Project scaffold — app factory, config, models, MockProvider, structlog, tests
+- **H2:** Data layer — AKShare THS provider, rate limiter, aiosqlite DB with 5-table schema
+
+5 backlog items queued for future cycles: monitoring engine, PushPlus client, REST API, web UI, Docker deployment.
 
 ## Research Findings (2026-07-14)
 - **AKShare API instability**: East Money `push2*` endpoints broken since Feb 2026 (akfamily/akshare#7051). THS endpoints still working. DataProvider abstraction is critical insurance.
@@ -30,8 +37,9 @@ Stack: Python + FastAPI + AKShare (THS) + SQLite + HTMX/SSE + APScheduler + Dock
 - **Cross-project validation**: All 6 similar projects use DataProvider abstraction with fallback sources.
 - **Rate limiting**: No published limits from AKShare; 2-3s between requests, exponential backoff on errors.
 
-## CEO Verdict on Research
-- **PROCEED** — Research covers all critical implementation areas. Key findings on AKShare async conflict, aiosqlite requirement, and HTMX partial patterns are directly actionable.
+## CEO Verdicts
+- **Research:** PROCEED — Research covers all critical implementation areas.
+- **Strategy:** PROCEED — 2 hypotheses approved, well-scoped with growth dimension tags.
 
 ## Source Notes
 - [AKShare THS API](sources/akshare-ths-api.md) — API instability, rate limiting, asyncio compatibility
@@ -49,12 +57,22 @@ Stack: Python + FastAPI + AKShare (THS) + SQLite + HTMX/SSE + APScheduler + Dock
 3. AKShare asyncio conflict if not properly wrapped
 4. Rate limiting opacity — no published limits, opaque blocking
 
-## Recommended Build Priorities
-1. Project scaffold + DataProvider ABC + MockProvider + basic tests
-2. SQLite schema (5 tables) with aiosqlite + WAL mode
-3. AKShare THS provider skeleton with rate limiting
-4. Defer: SSE streaming, web UI templates, APScheduler jobs, Docker
+## Recent Experiments
+- Experiment 002 — Data Collection Layer (KEEP). DataProvider ABC, AKShareTHSProvider, MockProvider, rate limiter. 23 tests passing.
+- Experiment 001 — Project scaffold (KEEP, +0.387). PR #2. Builder delivered H1 scope (app factory, config, models, MockProvider, structlog, logging middleware) plus bonus H2 work (AKShareTHSProvider, RateLimiter). 23 tests, ruff/mypy clean.
+
+## Builder Notes (Experiment #1)
+- AKShare calls wrapped with `asyncio.to_thread()` + retry (3 attempts, exponential backoff)
+- Rate limiter: async-safe with `asyncio.Lock`, 3s default interval
+- MockProvider: controllable prices, injectable news, financials, stock search
+- CLI `--test --dry-run` mode for eval mock_mode compatibility
+- Structured JSON logging middleware on all HTTP requests
 
 ## Timeline
 - 2026-07-14: Research completed — 8 source notes archived
-- 2026-07-14: CEO verdict: PROCEED to strategy
+- 2026-07-14: CEO verdict on research: PROCEED
+- 2026-07-14: Strategy approved — H1 (scaffold) → H2 (data layer)
+- 2026-07-14: Phase 1 build complete — scaffold KEEP, score 0.413 → 0.8
+- 2026-07-14: CEO verdict on build: PROCEED to Phase 2
+- 2026-07-14: Builder implementation archived — PR #2, 23 tests, bonus H2 work included
+- 2026-07-14: Phase 2 build complete — Data Collection Layer (DataProvider ABC, AKShareTHSProvider, MockProvider, rate limiter), 23 tests

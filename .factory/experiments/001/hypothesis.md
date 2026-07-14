@@ -1,0 +1,1 @@
+Project scaffold with app factory, config, data models, MockProvider, structured logging, and tests
