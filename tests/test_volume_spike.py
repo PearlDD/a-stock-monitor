@@ -47,8 +47,7 @@ class TestVolumeSpikeAlert:
         rule = _make_volume_rule(threshold=2.0)
         quotes = [_make_quote(volume=50000.0)]
         triggered = await engine.evaluate(quotes, [rule])
-        # First eval records volume but avg is based on current only, so
-        # volume == avg, ratio is 1x, threshold 2x not met
+        # No prior history → avg is 0 → condition returns False
         assert len(triggered) == 0
 
     @pytest.mark.asyncio

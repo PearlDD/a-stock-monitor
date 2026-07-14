@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 from fastapi.testclient import TestClient
 
+import app.services.market_data as market_data
 from app.database import init_db
 from app.main import create_app
+from app.services.cache import get_cache
 
 
 @pytest.fixture
 async def test_db(tmp_path):
     """Initialize a test database."""
-    db_path = str(tmp_path / "test.db")
     import os
+
+    db_path = str(tmp_path / "test.db")
     os.environ["DATABASE_PATH"] = db_path
     await init_db(db_path)
     yield db_path
@@ -24,7 +25,9 @@ async def test_db(tmp_path):
 
 @pytest.fixture
 def client(test_db):
-    """Test client with initialized DB, no network calls."""
+    """Test client with initialized DB."""
+    cache = get_cache()
+    cache.clear()
     app = create_app()
     return TestClient(app)
 
@@ -73,7 +76,6 @@ class TestWatchlistRouter:
 
 class TestAlertRouter:
     def test_create_and_list_alert(self, client: TestClient):
-        # Add stock first
         client.post("/api/watchlist", json={"code": "600519", "name": "贵州茅台"})
 
         resp = client.post(
@@ -150,45 +152,66 @@ class TestAlertRouter:
         assert len(resp.json()["alerts"]) == 0
 
 
-_MKT = "app.services.market_data"
-
-
-def _mock_mkt(fn_name, retval):
-    return patch(f"{_MKT}.{fn_name}", new_callable=AsyncMock, return_value=retval)
-
-
 class TestStockRouter:
-    def test_get_financials_empty(self, client: TestClient):
-        with _mock_mkt("get_financial_summary", None):
-            resp = client.get("/api/stocks/600519/financials")
-            assert resp.status_code == 200
-            assert resp.json()["financials"] is None
+    def test_get_financials_empty(self, client: TestClient, monkeypatch):
+        async def _no_financials(*a, **kw):
+            return None
 
-    def test_get_history_empty(self, client: TestClient):
-        with _mock_mkt("get_price_history", []):
-            resp = client.get("/api/stocks/600519/history")
-            assert resp.status_code == 200
-            assert resp.json()["history"] == []
+        monkeypatch.setattr(market_data, "get_financial_summary", _no_financials)
+        resp = client.get("/api/stocks/600519/financials")
+        assert resp.status_code == 200
+        assert resp.json()["financials"] is None
 
-    def test_get_announcements_empty(self, client: TestClient):
-        with _mock_mkt("get_announcements", []):
-            resp = client.get("/api/stocks/600519/announcements")
-            assert resp.status_code == 200
-            assert resp.json()["announcements"] == []
+    def test_get_history_empty(self, client: TestClient, monkeypatch):
+        async def _no_history(*a, **kw):
+            return []
 
-    def test_get_news_empty(self, client: TestClient):
-        with _mock_mkt("get_stock_news", []):
-            resp = client.get("/api/stocks/600519/news")
-            assert resp.status_code == 200
-            assert resp.json()["news"] == []
+        monkeypatch.setattr(market_data, "get_price_history", _no_history)
+        resp = client.get("/api/stocks/600519/history")
+        assert resp.status_code == 200
+        assert resp.json()["history"] == []
 
-    def test_get_quotes_empty(self, client: TestClient):
-        with _mock_mkt("get_realtime_quotes", []):
-            resp = client.get(
-                "/api/stocks/quotes", params={"codes": "600519"}
+    def test_get_announcements_empty(self, client: TestClient, monkeypatch):
+        async def _no_ann(*a, **kw):
+            return []
+
+        monkeypatch.setattr(market_data, "get_announcements", _no_ann)
+        resp = client.get("/api/stocks/600519/announcements")
+        assert resp.status_code == 200
+        assert resp.json()["announcements"] == []
+
+    def test_get_news_empty(self, client: TestClient, monkeypatch):
+        async def _no_news(*a, **kw):
+            return []
+
+        monkeypatch.setattr(market_data, "get_stock_news", _no_news)
+        resp = client.get("/api/stocks/600519/news")
+        assert resp.status_code == 200
+        assert resp.json()["news"] == []
+
+    def test_get_quotes_empty(self, client: TestClient, monkeypatch):
+        async def _no_quotes(*a, **kw):
+            return []
+
+        monkeypatch.setattr(market_data, "get_realtime_quotes", _no_quotes)
+        resp = client.get("/api/stocks/quotes", params={"codes": "600519"})
+        assert resp.status_code == 200
+        assert resp.json()["quotes"] == []
+
+    def test_get_stock_info(self, client: TestClient, monkeypatch):
+        from app.models.market import StockInfo
+
+        async def _mock_info(*a, **kw):
+            return StockInfo(
+                code="600519", name="贵州茅台", sector="白酒", market="SH"
             )
-            assert resp.status_code == 200
-            assert resp.json()["quotes"] == []
+
+        monkeypatch.setattr(market_data, "get_stock_info", _mock_info)
+        resp = client.get("/api/stocks/600519/info")
+        assert resp.status_code == 200
+        info = resp.json()["info"]
+        assert info["code"] == "600519"
+        assert info["name"] == "贵州茅台"
 
 
 class TestSettingsRouter:
@@ -241,3 +264,23 @@ class TestAIRouter:
         assert resp.status_code == 200
         data = resp.json()
         assert "error" in data
+
+    def test_analyze_no_key(self, client: TestClient, monkeypatch):
+        async def _no_quotes(*a, **kw):
+            return []
+
+        monkeypatch.setattr(market_data, "get_realtime_quotes", _no_quotes)
+        resp = client.post("/api/ai/analyze/600519")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "analysis" in data
+
+    def test_summarize_no_news(self, client: TestClient, monkeypatch):
+        async def _no_news(*a, **kw):
+            return []
+
+        monkeypatch.setattr(market_data, "get_stock_news", _no_news)
+        resp = client.post("/api/ai/summarize-news/600519")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "summary" in data

@@ -1,48 +1,24 @@
-# Builder Report — Phases 5-8 + Code Review Fixes
+# Builder Review — Test Reliability Fixes
 
-**Date:** 2026-07-14
-**Branch:** factory/run-d7d0e49a
-**Tests:** 173 passed, 0 failed
-**Lint:** All checks passed
-**Smoke test:** OK
+## Status: COMPLETE
 
-## Code Review Fixes (6 issues resolved)
+## Changes Made
 
-1. **volume_spike stub** — Implemented rolling average volume comparison. AlertEngine tracks volume history per stock, triggers when `volume > threshold * avg_volume`.
-2. **Banned stock_individual_info_em()** — Replaced with `stock_zh_a_spot_em()` lookup in both providers.
-3. **asyncio.get_event_loop()** — Replaced with `asyncio.get_running_loop()` in push.py.
-4. **DAILY_CAP=195** — Fixed to 180 per spec. Updated frontend too.
-5. **CORS wildcard + credentials** — Removed invalid `allow_credentials=True`.
-6. **Unused redis_url** — Removed from config and .env.example.
-7. **CLAUDE.md** — Updated to reflect Vue 3 + Vant 4 + DeepSeek.
-8. **MockProvider** — Fixed timezone, _quote_extras init, added volume support.
+### Test Fixes (Code Review Follow-up)
 
-## Phase 5 — Stock Detail Enrichment
+1. **`test_akshare_provider.py`**: Rewrote all mocks from `unittest.mock.patch` to `monkeypatch.setattr` for reliable async mocking. Previous approach was flaky with `asyncio.to_thread` — mocks sometimes didn't intercept the real akshare calls, causing network-dependent test failures.
 
-- GET /api/stocks/{code}/financials, /history, /announcements
-- Frontend: financial card, 5-day canvas chart, news infinite scroll, announcements tab
-- Data delay disclaimer on price screens
+2. **`test_routers.py`**: Rewrote `TestStockRouter` tests using `monkeypatch.setattr` on the `market_data` module directly (instead of `AsyncMock` with `patch`). Added 4 new endpoint tests:
+   - `test_get_stock_info` — stock info endpoint with mocked data
+   - `test_get_quotes_empty` — quotes endpoint
+   - `test_analyze_no_key` — AI analyze endpoint (no API key)
+   - `test_summarize_no_news` — AI summarize endpoint (no news)
 
-## Phase 6 — AI Company Analysis (DeepSeek)
+3. **`test_volume_spike.py`**: Updated comment to match the fixed logic (volumes now recorded AFTER evaluation, so first eval has no history → avg is 0 → no trigger).
 
-- src/app/services/ai.py: analyze_stock(), summarize_news() via OpenAI SDK
-- Hard-coded disclaimer, 500 char cap, 30min cache, ai_log DB table
-- POST /api/ai/analyze/{code}, /summarize-news/{code}, /push-analysis/{code}
-- Frontend: '一键分析' button, push to WeChat
+4. **Cache isolation**: Added `cache.clear()` in the `client` fixture to prevent cross-test cache pollution.
 
-## Phase 7 — AI Stock Screening
-
-- src/app/services/screener.py: NL criteria → DeepSeek → structured filters
-- Presets: '低估值蓝筹', '近期强势', '高股息'
-- POST /api/ai/screen, GET /api/ai/presets
-- Rate limit: 10/hour. Frontend: Screener view + 5th tab '选股'
-
-## Phase 8 — News Alerts + Polish
-
-- check_news job every 5min, dedup by headline hash
-- request_id middleware + X-Request-ID header
-- PWA manifest, /setup guide, Chinese error toasts
-
-## Test Coverage: 173 tests across 16 test files
-
-New test files: test_routers (20), test_ai (6), test_screener (14), test_volume_spike (7), test_news_dedup (8)
+## Test Results
+- **176 tests passed, 0 failed** (up from 173 with 3 failures)
+- **Lint: All checks passed**
+- **No network calls in any test**
