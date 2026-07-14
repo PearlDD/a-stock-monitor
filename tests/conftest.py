@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.providers.mock import MockProvider
 
 
 @pytest.fixture
@@ -16,3 +17,9 @@ def app():
 def client(app):
     """Create a test client."""
     return TestClient(app)
+
+
+@pytest.fixture
+def mock_provider():
+    """Create a MockProvider instance for testing."""
+    return MockProvider()
