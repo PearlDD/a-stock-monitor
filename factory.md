@@ -18,6 +18,7 @@ Build a reliable A-share stock monitoring system that auto-collects real-time qu
 - docker-compose.yml
 - .env.example
 - CLAUDE.md
+- .factory/**
 
 ### Read-only
 
