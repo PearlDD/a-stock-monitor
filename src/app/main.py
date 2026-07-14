@@ -135,8 +135,9 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
 
         # Test AKShare connectivity
         try:
-            import akshare as ak
             import asyncio as _aio
+
+            import akshare as ak
 
             df = await _aio.to_thread(ak.stock_zh_a_spot_em)
             if df is None or df.empty:
