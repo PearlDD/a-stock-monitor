@@ -10,7 +10,8 @@
     "Dockerfile",
     "docker-compose.yml",
     ".env.example",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    ".factory/**"
   ],
   "guards": [
     "Do not delete or overwrite existing tests",
