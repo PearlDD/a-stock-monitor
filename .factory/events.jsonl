@@ -61,3 +61,4 @@
 {"type": "phase.eval.completed", "timestamp": "2026-07-14T16:31:22.015970+00:00", "project": "spec", "agent": null, "data": {"exp_id": 1}}
 {"type": "precheck.completed", "timestamp": "2026-07-14T16:31:43.068815+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
 {"type": "guard.completed", "timestamp": "2026-07-14T16:31:49.814317+00:00", "project": "spec", "agent": null, "data": {"violations": 1, "clean": false}}
+{"type": "precheck.completed", "timestamp": "2026-07-14T16:32:00.132556+00:00", "project": "spec", "agent": null, "data": {"passed": false, "failures": ["scope"]}}
