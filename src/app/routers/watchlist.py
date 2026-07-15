@@ -227,6 +227,12 @@ async def get_settings():
         "pushplus_token_masked": masked,
         "pushplus_token_set": bool(token),
         "timezone": s.timezone,
+        "ai_provider_analysis": s.ai_provider_analysis,
+        "ai_provider_screening": s.ai_provider_screening,
+        "ai_providers_configured": {
+            "deepseek": bool(s.deepseek_api_key),
+            "claude": bool(s.effective_claude_api_key),
+        },
     }
 
 

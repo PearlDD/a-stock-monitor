@@ -1,6 +1,6 @@
 """AI-powered stock screening service.
 
-User inputs Chinese criteria, DeepSeek parses to structured filters,
+User inputs Chinese criteria, AI parses to structured filters,
 applied against market data. Includes predefined quick-filters.
 Rate limited: max 10 screening queries per hour.
 """
@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import time
 
-from app.config import get_settings
 from app.logging import get_logger
 from app.services.cache import get_cache
 
@@ -92,19 +91,8 @@ def _apply_filters(stocks: list[dict], filters: dict) -> list[dict]:
 
 
 async def _parse_criteria_with_ai(query: str) -> dict:
-    """Use DeepSeek to parse natural language criteria to structured filters."""
-    settings = get_settings()
-    if not settings.deepseek_api_key:
-        raise ValueError("DEEPSEEK_API_KEY not configured")
-
-    import asyncio
-
-    from openai import OpenAI
-
-    client = OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url="https://api.deepseek.com",
-    )
+    """Use AI to parse natural language criteria to filters."""
+    from app.services.ai import _call_ai
 
     prompt = (
         "将以下中文选股条件转换为JSON过滤器。"
@@ -115,15 +103,8 @@ async def _parse_criteria_with_ai(query: str) -> dict:
         f"条件: {query}"
     )
 
-    response = await asyncio.to_thread(
-        client.chat.completions.create,
-        model="deepseek-chat",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=200,
-        temperature=0.3,
-    )
+    text = await _call_ai(prompt, task_type="screening", max_chars=500)
 
-    text = response.choices[0].message.content or "{}"
     # Extract JSON from response
     text = text.strip()
     if text.startswith("```"):

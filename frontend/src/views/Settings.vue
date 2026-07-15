@@ -36,6 +36,11 @@
       <van-cell title="配置指南" is-link to="/setup" />
     </van-cell-group>
 
+    <van-cell-group title="AI 服务" inset style="margin-top: 12px;">
+      <van-cell title="深度分析" :value="aiAnalysisLabel" />
+      <van-cell title="筛选/摘要" :value="aiScreeningLabel" />
+    </van-cell-group>
+
     <van-cell-group title="系统信息" inset style="margin-top: 12px;">
       <van-cell title="时区" value="Asia/Shanghai" />
       <van-cell title="版本" value="0.2.0" />
@@ -56,6 +61,29 @@ import { getSettings, updateSettings, testPush, getPushQuota } from '../api'
 const token = ref('')
 const testing = ref(false)
 const quota = ref({ used: 0, limit: 180, remaining: 180 })
+const aiProviderAnalysis = ref('')
+const aiProviderScreening = ref('')
+const aiProvidersConfigured = ref({})
+
+const providerNames = {
+  claude: 'Claude',
+  deepseek: 'DeepSeek',
+  openai: 'OpenAI',
+  qwen: 'Qwen',
+}
+
+const formatProvider = (provider, configured) => {
+  const name = providerNames[provider] || provider
+  const isConfigured = configured[provider]
+  return isConfigured ? `${name} ✓` : `${name} (未配置)`
+}
+
+const aiAnalysisLabel = computed(() =>
+  formatProvider(aiProviderAnalysis.value, aiProvidersConfigured.value)
+)
+const aiScreeningLabel = computed(() =>
+  formatProvider(aiProviderScreening.value, aiProvidersConfigured.value)
+)
 
 const quotaPct = computed(() => {
   if (!quota.value.limit) return 0
@@ -68,6 +96,9 @@ const fetchSettings = async () => {
     if (data.pushplus_token_set) {
       token.value = '••••••••'
     }
+    aiProviderAnalysis.value = data.ai_provider_analysis || ''
+    aiProviderScreening.value = data.ai_provider_screening || ''
+    aiProvidersConfigured.value = data.ai_providers_configured || {}
   } catch (e) {
     showToast('获取设置失败')
   }
