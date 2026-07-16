@@ -110,21 +110,28 @@ async def _retry_akshare(func, *args, **kwargs):  # type: ignore[no-untyped-def]
 
 
 async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
-    """Fetch real-time quotes for given stock codes.
+    """Fetch quotes for given stock codes.
 
-    Uses ak.stock_zh_a_spot_em() and filters to watchlist codes.
+    During trading hours: returns live data from ak.stock_zh_a_spot_em().
+    Outside trading hours: returns last close data from spot_em, falling back
+    to ak.stock_zh_a_hist() if spot_em returns no data for requested codes.
     """
+    from app.services.trading_calendar import get_market_status
+
     cache = get_cache()
     cache_key = "quotes:all"
+    market_status = await get_market_status()
 
     if _circuit_breaker.is_open:
         log.info("circuit_breaker_open_serving_cache", func="quotes")
         cached = await cache.get(cache_key)
-        return _filter_quotes(cached, codes) if cached else []
+        quotes = _filter_quotes(cached, codes) if cached else []
+        return _stamp_market_status(quotes, market_status)
 
     cached = await cache.get(cache_key)
     if cached is not None:
-        return _filter_quotes(cached, codes)
+        quotes = _filter_quotes(cached, codes)
+        return _stamp_market_status(quotes, market_status)
 
     try:
         import akshare as ak
@@ -147,18 +154,100 @@ async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
                         open=float(row.get("今开", 0) or 0),
                         prev_close=float(row.get("昨收", 0) or 0),
                         timestamp=now,
+                        market_status=market_status,
                     )
                 )
             except (ValueError, TypeError):
                 continue
 
         await cache.set(cache_key, all_quotes, QUOTE_TTL)
-        log.info("quotes_fetched", total=len(all_quotes))
-        return _filter_quotes(all_quotes, codes)
+        log.info("quotes_fetched", total=len(all_quotes), market_status=market_status)
+
+        filtered = _filter_quotes(all_quotes, codes)
+
+        # If outside trading hours and spot data is missing for some codes,
+        # fall back to historical data
+        if market_status == "closed" and len(filtered) < len(codes):
+            found_codes = {q.code for q in filtered}
+            missing = [c for c in codes if c not in found_codes]
+            if missing:
+                hist_quotes = await _fallback_hist_quotes(missing, now)
+                filtered.extend(hist_quotes)
+
+        return filtered
     except Exception:
         log.error("quotes_fetch_failed", exc_info=True)
         cached = await cache.get(cache_key)
-        return _filter_quotes(cached, codes) if cached else []
+        quotes = _filter_quotes(cached, codes) if cached else []
+        # If cache also empty and market closed, try hist fallback
+        if not quotes and market_status == "closed":
+            now = datetime.now(tz=SHANGHAI_TZ)
+            quotes = await _fallback_hist_quotes(codes, now)
+        return _stamp_market_status(quotes, market_status)
+
+
+async def _fallback_hist_quotes(
+    codes: list[str], now: datetime
+) -> list[StockQuote]:
+    """Fetch last trading day's close via ak.stock_zh_a_hist() as fallback."""
+    quotes: list[StockQuote] = []
+    try:
+        import akshare as ak
+
+        for code in codes:
+            try:
+                df = await _retry_akshare(
+                    ak.stock_zh_a_hist,
+                    symbol=code,
+                    period="daily",
+                    adjust="qfq",
+                )
+                if df is None or df.empty:
+                    continue
+                row = df.iloc[-1]
+                close = float(row.get("收盘", 0) or 0)
+                if len(df) >= 2:
+                    prev_close = float(
+                        df.iloc[-2].get("收盘", close) or close
+                    )
+                else:
+                    prev_close = close
+                if prev_close:
+                    change_pct = (close - prev_close) / prev_close * 100
+                else:
+                    change_pct = 0.0
+                quotes.append(
+                    StockQuote(
+                        code=code,
+                        name="",
+                        price=close,
+                        change_pct=round(change_pct, 2),
+                        volume=float(row.get("成交量", 0) or 0),
+                        amount=float(row.get("成交额", 0) or 0),
+                        high=float(row.get("最高", 0) or 0),
+                        low=float(row.get("最低", 0) or 0),
+                        open=float(row.get("开盘", 0) or 0),
+                        prev_close=prev_close,
+                        timestamp=now,
+                        market_status="closed",
+                    )
+                )
+                log.info("hist_fallback_quote", code=code, price=close)
+            except Exception:
+                log.warning("hist_fallback_failed", code=code, exc_info=True)
+                continue
+    except Exception:
+        log.error("hist_fallback_import_failed", exc_info=True)
+    return quotes
+
+
+def _stamp_market_status(
+    quotes: list[StockQuote], market_status: str
+) -> list[StockQuote]:
+    """Set market_status on all quotes."""
+    for q in quotes:
+        q.market_status = market_status
+    return quotes
 
 
 def _filter_quotes(

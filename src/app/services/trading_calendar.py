@@ -81,6 +81,15 @@ def is_trading_hours(now: datetime | None = None) -> bool:
     )
 
 
+async def get_market_status(now: datetime | None = None) -> str:
+    """Return 'trading' if market is open, 'closed' otherwise."""
+    if now is None:
+        now = _now_shanghai()
+    if is_trading_hours(now) and await is_trade_date(now.date()):
+        return "trading"
+    return "closed"
+
+
 async def should_poll(now: datetime | None = None) -> bool:
     """Check if we should poll market data right now (trading day + trading hours)."""
     if now is None:

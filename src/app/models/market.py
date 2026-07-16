@@ -21,6 +21,7 @@ class StockQuote:
     open: float
     prev_close: float
     timestamp: datetime | None = None
+    market_status: str = "trading"  # "trading" or "closed"
 
 
 @dataclass

@@ -36,9 +36,11 @@ async def get_quotes(
                 "open": q.open,
                 "prev_close": q.prev_close,
                 "timestamp": q.timestamp.isoformat() if q.timestamp else None,
+                "market_status": q.market_status,
             }
             for q in quotes
-        ]
+        ],
+        "market_status": quotes[0].market_status if quotes else "closed",
     }
 
 
