@@ -167,6 +167,11 @@ async def check_and_alert_capital_flow() -> list[dict[str, Any]]:
 
 async def get_top_capital_flow() -> dict[str, Any]:
     """Get today's top capital inflow stocks (for API endpoint)."""
+    from app.config import get_settings
+
+    if get_settings().data_mode == "mock":
+        return _demo_capital_flow()
+
     cache = get_cache()
     cached = await cache.get(CAPITAL_FLOW_CACHE_KEY)
     if cached is not None:
@@ -197,3 +202,20 @@ async def _store_snapshots(stocks: list[dict[str, Any]]) -> None:
         log.info("capital_flow_snapshots_stored", count=len(stocks))
     except Exception:
         log.error("capital_flow_snapshots_store_failed", exc_info=True)
+
+
+def _demo_capital_flow() -> dict[str, Any]:
+    """Return pre-built demo capital flow data."""
+    stocks = [
+        {"code": "601899", "name": "紫金矿业", "net_inflow": 8.5e8, "change_pct": 3.2},
+        {"code": "002594", "name": "比亚迪", "net_inflow": 7.2e8, "change_pct": 1.8},
+        {"code": "300750", "name": "宁德时代", "net_inflow": 6.8e8, "change_pct": 2.3},
+        {"code": "600519", "name": "贵州茅台", "net_inflow": 5.5e8, "change_pct": 1.5},
+        {"code": "600030", "name": "中信证券", "net_inflow": 4.3e8, "change_pct": 1.1},
+        {"code": "300059", "name": "东方财富", "net_inflow": 3.8e8, "change_pct": 2.1},
+        {"code": "000333", "name": "美的集团", "net_inflow": 3.2e8, "change_pct": 0.8},
+        {"code": "002475", "name": "立讯精密", "net_inflow": 2.9e8, "change_pct": 1.5},
+        {"code": "601318", "name": "中国平安", "net_inflow": 2.5e8, "change_pct": 0.5},
+        {"code": "600036", "name": "招商银行", "net_inflow": 2.1e8, "change_pct": -0.2},
+    ]
+    return {"stocks": stocks, "cached": False}

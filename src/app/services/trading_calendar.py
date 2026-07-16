@@ -82,7 +82,12 @@ def is_trading_hours(now: datetime | None = None) -> bool:
 
 
 async def get_market_status(now: datetime | None = None) -> str:
-    """Return 'trading' if market is open, 'closed' otherwise."""
+    """Return 'demo' in mock mode, 'trading' if market is open, 'closed' otherwise."""
+    from app.config import get_settings
+
+    if get_settings().data_mode == "mock":
+        return "demo"
+
     if now is None:
         now = _now_shanghai()
     if is_trading_hours(now) and await is_trade_date(now.date()):

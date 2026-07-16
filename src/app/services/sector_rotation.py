@@ -69,7 +69,13 @@ async def predict_sector_rotation() -> dict[str, Any]:
     """Predict sector rotation using AI analysis.
 
     Returns cached result if available (4-hour TTL).
+    In demo mode, returns pre-built mock predictions.
     """
+    from app.config import get_settings
+
+    if get_settings().data_mode == "mock":
+        return _demo_sector_predictions()
+
     cache = get_cache()
     cached = await cache.get(SECTOR_CACHE_KEY)
     if cached is not None:
@@ -191,3 +197,45 @@ def _parse_predictions(text: str) -> list[dict[str, Any]]:
         })
 
     return predictions[:5]
+
+
+def _demo_sector_predictions() -> dict[str, Any]:
+    """Return pre-built demo sector rotation predictions."""
+    predictions = [
+        {
+            "sector": "新能源汽车",
+            "reason": "销量持续创新高，政策扶持力度不减，产业链景气度高",
+            "leaders": [
+                {"code": "002594", "name": "比亚迪"},
+                {"code": "300750", "name": "宁德时代"},
+            ],
+        },
+        {
+            "sector": "有色金属",
+            "reason": "黄金价格创历史新高，铜铝等基本金属需求回升",
+            "leaders": [
+                {"code": "601899", "name": "紫金矿业"},
+            ],
+        },
+        {
+            "sector": "白酒",
+            "reason": "消费复苏预期升温，高端白酒提价预期强烈",
+            "leaders": [
+                {"code": "600519", "name": "贵州茅台"},
+                {"code": "000858", "name": "五粮液"},
+            ],
+        },
+        {
+            "sector": "券商",
+            "reason": "成交量回升叠加注册制改革红利，业绩弹性大",
+            "leaders": [
+                {"code": "600030", "name": "中信证券"},
+                {"code": "300059", "name": "东方财富"},
+            ],
+        },
+    ]
+    return {
+        "predictions": predictions,
+        "cached": False,
+        "disclaimer": AI_DISCLAIMER + "（演示数据）",
+    }

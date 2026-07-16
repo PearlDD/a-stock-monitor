@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # SQLite database
     database_url: str = "sqlite+aiosqlite:///data/stock_monitor.db"
 
+    # Data mode: 'mock' for demo data (no AKShare), 'live' for real data
+    data_mode: str = "live"
+
     # Logging
     log_level: str = "INFO"
 

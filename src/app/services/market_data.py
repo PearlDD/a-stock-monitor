@@ -27,6 +27,18 @@ log = get_logger("market_data")
 
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
+
+def _is_demo_mode() -> bool:
+    from app.config import get_settings
+
+    return get_settings().data_mode == "mock"
+
+
+def _get_demo_provider():  # type: ignore[no-untyped-def]
+    from app.providers.demo import DemoProvider
+
+    return DemoProvider()
+
 # Circuit breaker settings
 _CB_FAILURE_THRESHOLD = 3
 _CB_COOLDOWN_SECONDS = 600  # 10 minutes
@@ -112,10 +124,14 @@ async def _retry_akshare(func, *args, **kwargs):  # type: ignore[no-untyped-def]
 async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
     """Fetch quotes for given stock codes.
 
+    In demo mode: returns data from DemoProvider with market_status='demo'.
     During trading hours: returns live data from ak.stock_zh_a_spot_em().
     Outside trading hours: returns last close data from spot_em, falling back
     to ak.stock_zh_a_hist() if spot_em returns no data for requested codes.
     """
+    if _is_demo_mode():
+        return await _get_demo_provider().get_realtime_quotes(codes)
+
     from app.services.trading_calendar import get_market_status
 
     cache = get_cache()
@@ -261,6 +277,9 @@ def _filter_quotes(
 
 async def get_stock_info(code: str) -> StockInfo | None:
     """Fetch basic info for a stock."""
+    if _is_demo_mode():
+        return await _get_demo_provider().get_stock_info(code)
+
     cache = get_cache()
     cache_key = f"info:{code}"
 
@@ -296,6 +315,9 @@ async def get_stock_info(code: str) -> StockInfo | None:
 
 async def get_stock_news(code: str, limit: int = 10) -> list[NewsItem]:
     """Fetch recent news for a stock via ak.stock_news_em()."""
+    if _is_demo_mode():
+        return await _get_demo_provider().get_stock_news(code, limit=limit)
+
     cache = get_cache()
     cache_key = f"news:{code}"
 
@@ -342,6 +364,9 @@ async def get_stock_news(code: str, limit: int = 10) -> list[NewsItem]:
 
 async def get_price_history(code: str, days: int = 5) -> list[dict]:
     """Fetch recent daily price history via ak.stock_zh_a_hist()."""
+    if _is_demo_mode():
+        return _generate_demo_price_history(code, days)
+
     cache = get_cache()
     cache_key = f"history:{code}:{days}"
 
@@ -387,6 +412,9 @@ async def get_price_history(code: str, days: int = 5) -> list[dict]:
 
 async def get_announcements(code: str, limit: int = 10) -> list[dict]:
     """Fetch company announcements via ak.stock_notice_report()."""
+    if _is_demo_mode():
+        return _generate_demo_announcements(code, limit)
+
     cache = get_cache()
     cache_key = f"announcements:{code}"
 
@@ -423,6 +451,9 @@ async def get_announcements(code: str, limit: int = 10) -> list[dict]:
 
 async def get_financial_summary(code: str) -> FinancialSummary | None:
     """Fetch key financials via ak.stock_financial_abstract_ths()."""
+    if _is_demo_mode():
+        return await _get_demo_provider().get_financial_summary(code)
+
     cache = get_cache()
     cache_key = f"financials:{code}"
 
@@ -454,3 +485,69 @@ async def get_financial_summary(code: str) -> FinancialSummary | None:
     except Exception:
         log.error("financials_fetch_failed", code=code, exc_info=True)
         return await cache.get(cache_key)
+
+
+def _generate_demo_price_history(code: str, days: int) -> list[dict]:
+    """Generate mock price history for demo mode."""
+    import random
+    from datetime import timedelta
+
+    from app.providers.demo import _DEMO_STOCKS
+
+    base_price = None
+    for c, _name, price, _pct, _sector in _DEMO_STOCKS:
+        if c == code:
+            base_price = price
+            break
+    if base_price is None:
+        return []
+
+    history: list[dict] = []
+    today = datetime.now(tz=SHANGHAI_TZ).date()
+    for i in range(days, 0, -1):
+        d = today - timedelta(days=i)
+        drift = random.uniform(-0.02, 0.02)
+        close = round(base_price * (1 + drift), 2)
+        high = round(close * (1 + random.uniform(0, 0.015)), 2)
+        low = round(close * (1 - random.uniform(0, 0.015)), 2)
+        open_p = round(close * (1 + random.uniform(-0.01, 0.01)), 2)
+        history.append({
+            "date": d.isoformat(),
+            "open": open_p,
+            "close": close,
+            "high": high,
+            "low": low,
+            "volume": round(random.uniform(50000, 500000)),
+        })
+    return history
+
+
+def _generate_demo_announcements(code: str, limit: int) -> list[dict]:
+    """Generate mock announcements for demo mode."""
+    from datetime import timedelta
+
+    from app.providers.demo import _DEMO_STOCKS
+
+    name = None
+    for c, n, *_ in _DEMO_STOCKS:
+        if c == code:
+            name = n
+            break
+    if name is None:
+        return []
+
+    today = datetime.now(tz=SHANGHAI_TZ).date()
+    templates = [
+        f"{name}关于2024年年度报告的公告",
+        f"{name}关于董事会决议的公告",
+        f"{name}关于回购公司股份的公告",
+        f"{name}投资者关系活动记录表",
+    ]
+    return [
+        {
+            "title": templates[i % len(templates)],
+            "date": (today - timedelta(days=i * 7)).isoformat(),
+            "url": "",
+        }
+        for i in range(min(limit, len(templates)))
+    ]

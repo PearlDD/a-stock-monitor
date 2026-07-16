@@ -1,7 +1,12 @@
 """Shared test fixtures."""
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
+
+# Force live mode in tests so demo provider doesn't interfere
+os.environ.setdefault("DATA_MODE", "live")
 
 from app.main import create_app
 from app.providers.mock import MockProvider
