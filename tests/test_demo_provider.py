@@ -120,7 +120,7 @@ class TestDemoModeIntegration:
         from app.services.sector_rotation import predict_sector_rotation
 
         result = await predict_sector_rotation()
-        assert len(result["predictions"]) > 0
+        assert len(result["sectors"]) > 0
         assert "演示数据" in result["disclaimer"]
 
     @pytest.mark.asyncio

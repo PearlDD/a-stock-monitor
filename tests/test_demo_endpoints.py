@@ -37,10 +37,10 @@ class TestSectorRotationDemo:
         resp = mock_client.get("/api/ai/sector-rotation")
         assert resp.status_code == 200
         data = resp.json()
-        assert "predictions" in data
-        predictions = data["predictions"]
-        assert 3 <= len(predictions) <= 5
-        for p in predictions:
+        assert "sectors" in data
+        sectors = data["sectors"]
+        assert 3 <= len(sectors) <= 5
+        for p in sectors:
             assert "sector" in p
             assert "reason" in p
             assert "leaders" in p
@@ -49,7 +49,7 @@ class TestSectorRotationDemo:
 
 class TestCapitalFlowDemo:
     def test_returns_stocks_in_mock_mode(self, mock_client):
-        resp = mock_client.get("/api/ai/capital-flow/top")
+        resp = mock_client.get("/api/capital-flow/top")
         assert resp.status_code == 200
         data = resp.json()
         assert "stocks" in data

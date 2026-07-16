@@ -88,10 +88,3 @@ async def get_sector_rotation():
     return result
 
 
-@router.get("/capital-flow/top")
-async def get_capital_flow_top():
-    """Get today's top capital inflow stocks."""
-    from app.services.capital_flow import get_top_capital_flow
-
-    result = await get_top_capital_flow()
-    return result

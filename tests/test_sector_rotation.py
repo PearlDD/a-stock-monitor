@@ -63,7 +63,7 @@ class TestPredictSectorRotation:
 
         result = await predict_sector_rotation()
         assert result["cached"] is True
-        assert result["predictions"] == cached_data
+        assert result["sectors"] == cached_data
         assert result["disclaimer"] == AI_DISCLAIMER
 
     @pytest.mark.asyncio
@@ -77,7 +77,7 @@ class TestPredictSectorRotation:
         monkeypatch.setattr(mod, "fetch_sector_data", _empty_data)
 
         result = await predict_sector_rotation()
-        assert result["predictions"] == []
+        assert result["sectors"] == []
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -103,7 +103,7 @@ class TestPredictSectorRotation:
 
         result = await predict_sector_rotation()
         assert result["cached"] is False
-        assert len(result["predictions"]) >= 1
+        assert len(result["sectors"]) >= 1
         assert result["disclaimer"] == AI_DISCLAIMER
 
     @pytest.mark.asyncio
@@ -124,5 +124,5 @@ class TestPredictSectorRotation:
         monkeypatch.setattr("app.services.ai._call_ai", _mock_ai_fail)
 
         result = await predict_sector_rotation()
-        assert result["predictions"] == []
+        assert result["sectors"] == []
         assert "error" in result

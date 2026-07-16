@@ -79,13 +79,13 @@ async def predict_sector_rotation() -> dict[str, Any]:
     cache = get_cache()
     cached = await cache.get(SECTOR_CACHE_KEY)
     if cached is not None:
-        return {"predictions": cached, "cached": True, "disclaimer": AI_DISCLAIMER}
+        return {"sectors": cached, "cached": True, "disclaimer": AI_DISCLAIMER}
 
     data = await fetch_sector_data()
 
     if not data["sectors"] and not data["capital_flow"]:
         return {
-            "predictions": [],
+            "sectors": [],
             "cached": False,
             "error": "无法获取板块数据",
             "disclaimer": AI_DISCLAIMER,
@@ -122,14 +122,14 @@ async def predict_sector_rotation() -> dict[str, Any]:
         await cache.set(SECTOR_CACHE_KEY, predictions, SECTOR_CACHE_TTL)
         log.info("sector_rotation_predicted", count=len(predictions))
         return {
-            "predictions": predictions,
+            "sectors": predictions,
             "cached": False,
             "disclaimer": AI_DISCLAIMER,
         }
     except Exception:
         log.error("sector_rotation_prediction_failed", exc_info=True)
         return {
-            "predictions": [],
+            "sectors": [],
             "cached": False,
             "error": "AI预测暂时不可用",
             "disclaimer": AI_DISCLAIMER,
@@ -235,7 +235,7 @@ def _demo_sector_predictions() -> dict[str, Any]:
         },
     ]
     return {
-        "predictions": predictions,
+        "sectors": predictions,
         "cached": False,
         "disclaimer": AI_DISCLAIMER + "（演示数据）",
     }

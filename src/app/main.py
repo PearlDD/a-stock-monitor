@@ -344,12 +344,14 @@ def create_app() -> FastAPI:
 
     # Register API routers
     from app.routers.ai import router as ai_router
+    from app.routers.capital_flow import router as capital_flow_router
     from app.routers.stocks import router as stocks_router
     from app.routers.watchlist import router as watchlist_router
 
     application.include_router(stocks_router)
     application.include_router(watchlist_router)
     application.include_router(ai_router)
+    application.include_router(capital_flow_router)
 
     return application
 

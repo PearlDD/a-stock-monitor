@@ -300,7 +300,7 @@ class TestAIRouter:
 
         async def _mock_predict(*a, **kw):
             return {
-                "predictions": [{"sector": "新能源", "reason": "test", "leaders": []}],
+                "sectors": [{"sector": "新能源", "reason": "test", "leaders": []}],
                 "cached": False,
                 "disclaimer": "以上由AI预测，仅供参考，不构成投资建议",
             }
@@ -309,7 +309,7 @@ class TestAIRouter:
         resp = client.get("/api/ai/sector-rotation")
         assert resp.status_code == 200
         data = resp.json()
-        assert "predictions" in data
+        assert "sectors" in data
         assert "disclaimer" in data
 
     def test_capital_flow_top_endpoint(self, client: TestClient, monkeypatch):
@@ -325,7 +325,7 @@ class TestAIRouter:
             }
 
         monkeypatch.setattr(flow_mod, "get_top_capital_flow", _mock_top)
-        resp = client.get("/api/ai/capital-flow/top")
+        resp = client.get("/api/capital-flow/top")
         assert resp.status_code == 200
         data = resp.json()
         assert "stocks" in data
