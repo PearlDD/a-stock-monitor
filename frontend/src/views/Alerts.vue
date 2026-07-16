@@ -12,7 +12,12 @@
       <div class="alert-card">
         <div class="alert-left">
           <div class="alert-stock">{{ alert.stock_name }} ({{ alert.stock_code }})</div>
-          <div class="alert-info">{{ alertTypeLabel(alert.alert_type) }} · {{ alert.threshold }}</div>
+          <div class="alert-info">
+            {{ alertTypeLabel(alert.alert_type) }} · {{ alert.threshold }}
+            <span v-if="alert.triggered_at && !alert.enabled" class="triggered-badge">
+              已触发 {{ alert.triggered_at }}
+            </span>
+          </div>
         </div>
         <van-switch
           :model-value="alert.enabled"
@@ -37,10 +42,10 @@
         <van-field name="alert_type" label="提醒类型">
           <template #input>
             <van-radio-group v-model="form.alert_type" direction="horizontal">
-              <van-radio name="price_pct_change">涨跌幅</van-radio>
               <van-radio name="price_target">目标价</van-radio>
               <van-radio name="limit_up">涨停</van-radio>
               <van-radio name="limit_down">跌停</van-radio>
+              <van-radio name="volume_spike">量能异动</van-radio>
             </van-radio-group>
           </template>
         </van-field>
@@ -76,24 +81,23 @@ const showAdd = ref(false)
 const form = ref({
   stock_code: '',
   stock_name: '',
-  alert_type: 'price_pct_change',
-  threshold: 5,
+  alert_type: 'price_target',
+  threshold: 0,
   direction: 'above',
 })
 
 const thresholdHint = computed(() => {
   const hints = {
-    price_pct_change: '涨跌幅百分比，如 5',
     price_target: '目标价格，如 1800',
     limit_up: '不需要填写',
     limit_down: '不需要填写',
+    volume_spike: '倍数，如 3（3倍均量）',
   }
   return hints[form.value.alert_type] || ''
 })
 
 const alertTypeLabel = (type) => {
   const labels = {
-    price_pct_change: '涨跌幅',
     price_target: '目标价',
     limit_up: '涨停',
     limit_down: '跌停',
@@ -111,7 +115,7 @@ const onSubmit = async () => {
   await createAlert(form.value)
   showToast('提醒已添加')
   showAdd.value = false
-  form.value = { stock_code: '', stock_name: '', alert_type: 'price_pct_change', threshold: 5, direction: 'above' }
+  form.value = { stock_code: '', stock_name: '', alert_type: 'price_target', threshold: 0, direction: 'above' }
   await fetchAlerts()
 }
 
@@ -143,4 +147,13 @@ onMounted(fetchAlerts)
 .alert-stock { font-size: 16px; font-weight: 600; }
 .alert-info { font-size: 13px; color: #999; margin-top: 4px; }
 .delete-btn { height: 100%; }
+.triggered-badge {
+  display: inline-block;
+  background: #f5f5f5;
+  color: #e74c3c;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
 </style>

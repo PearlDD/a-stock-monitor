@@ -32,10 +32,6 @@
       />
     </van-cell-group>
 
-    <van-cell-group title="帮助" inset style="margin-top: 12px;">
-      <van-cell title="配置指南" is-link to="/setup" />
-    </van-cell-group>
-
     <van-cell-group title="AI 服务" inset style="margin-top: 12px;">
       <van-cell title="深度分析" :value="aiAnalysisLabel" />
       <van-cell title="筛选/摘要" :value="aiScreeningLabel" />

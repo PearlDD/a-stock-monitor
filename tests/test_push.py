@@ -81,29 +81,6 @@ class TestPushPlusClient:
 
 
 class TestFormatAlertMessage:
-    def test_price_pct_change_up(self):
-        title, content = format_alert_message(
-            stock_name="贵州茅台",
-            stock_code="600519",
-            alert_type="price_pct_change",
-            current_value=5.2,
-            threshold=5.0,
-        )
-        assert "茅台" in title
-        assert "涨跌幅" in title
-        assert "5.20%" in content
-        assert "不构成投资建议" in content
-
-    def test_price_pct_change_down(self):
-        title, content = format_alert_message(
-            stock_name="贵州茅台",
-            stock_code="600519",
-            alert_type="price_pct_change",
-            current_value=-3.5,
-            threshold=-3.0,
-        )
-        assert "跌" in content
-
     def test_price_target(self):
         title, content = format_alert_message(
             stock_name="五粮液",
@@ -145,7 +122,6 @@ class TestFormatAlertMessage:
 
     def test_all_messages_have_disclaimer(self):
         for alert_type in [
-            "price_pct_change",
             "price_target",
             "limit_up",
             "limit_down",

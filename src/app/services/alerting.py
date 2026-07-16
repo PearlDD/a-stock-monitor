@@ -1,8 +1,13 @@
 """Alert evaluation engine.
 
-Supports: price_pct_change, price_target, limit_up/down, volume_spike.
+Supports: price_target (one-shot), limit_up/down (daily), volume_spike (daily).
 Uses edge triggering (alerts on threshold CROSSING, not while above).
 Per-stock 30-minute cooldown with dedup.
+
+Lifecycle:
+  - price_target: ONE-SHOT. Auto-disable after trigger, record triggered_at.
+  - limit_up / limit_down / volume_spike: DAILY. Fire at most once per day per stock.
+    Reset at 09:30 CST each trading day.
 """
 
 from __future__ import annotations
@@ -18,6 +23,12 @@ log = get_logger("alerting")
 
 COOLDOWN_SECONDS = 1800  # 30 minutes
 
+# Alert types that fire once per day (reset at 09:30 CST)
+DAILY_ALERT_TYPES = {"limit_up", "limit_down", "volume_spike"}
+
+# Alert types that are one-shot (auto-disable after trigger)
+ONE_SHOT_ALERT_TYPES = {"price_target"}
+
 
 @dataclass
 class AlertRule:
@@ -26,12 +37,11 @@ class AlertRule:
     id: int
     stock_code: str
     stock_name: str
-    alert_type: (
-        str  # price_pct_change, price_target, limit_up, limit_down, volume_spike
-    )
-    threshold: float  # depends on type: pct, price, or volume multiplier
+    alert_type: str  # price_target, limit_up, limit_down, volume_spike
+    threshold: float  # depends on type: price, or volume multiplier
     direction: str = "above"  # above or below (for price_target)
     enabled: bool = True
+    triggered_at: str | None = None
 
 
 @dataclass
@@ -50,6 +60,7 @@ class AlertEngine:
         self._previous_states: dict[str, dict[int, bool]] = {}
         self._volume_history: dict[str, list[float]] = {}
         self._volume_window = 20  # rolling window size for average
+        self._daily_fired: dict[int, str] = {}  # rule_id -> date string
 
     def record_volume(self, code: str, volume: float) -> None:
         """Record a volume observation for rolling average calculation."""
@@ -64,6 +75,27 @@ class AlertEngine:
         if not history:
             return 0.0
         return sum(history) / len(history)
+
+    def reset_daily_fired(self) -> None:
+        """Reset daily fired state (called at 09:30 CST each trading day)."""
+        self._daily_fired.clear()
+        log.info("daily_fired_state_reset")
+
+    def _is_daily_fired(self, rule_id: int) -> bool:
+        """Check if a daily alert has already fired today."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        today = datetime.now(tz=ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+        return self._daily_fired.get(rule_id) == today
+
+    def _mark_daily_fired(self, rule_id: int) -> None:
+        """Mark a daily alert as fired for today."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        today = datetime.now(tz=ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
+        self._daily_fired[rule_id] = today
 
     async def evaluate(
         self,
@@ -96,6 +128,16 @@ class AlertEngine:
             if not is_triggered or prev_state:
                 continue
 
+            # Daily alert types: check if already fired today
+            if rule.alert_type in DAILY_ALERT_TYPES:
+                if self._is_daily_fired(rule.id):
+                    log.debug(
+                        "daily_alert_already_fired",
+                        rule_id=rule.id,
+                        code=rule.stock_code,
+                    )
+                    continue
+
             # Check cooldown
             cooldown_key = f"alert_cooldown:{rule.stock_code}:{rule.id}"
             if await cache.exists(cooldown_key):
@@ -106,6 +148,10 @@ class AlertEngine:
 
             # Set cooldown
             await cache.set(cooldown_key, True, COOLDOWN_SECONDS)
+
+            # Mark daily fired for daily types
+            if rule.alert_type in DAILY_ALERT_TYPES:
+                self._mark_daily_fired(rule.id)
 
             current_value = self._get_current_value(quote, rule)
             alert = TriggeredAlert(
@@ -132,10 +178,7 @@ class AlertEngine:
 
     def _check_condition(self, quote: StockQuote, rule: AlertRule) -> bool:
         """Check if a quote matches an alert condition."""
-        if rule.alert_type == "price_pct_change":
-            return abs(quote.change_pct) >= abs(rule.threshold)
-
-        elif rule.alert_type == "price_target":
+        if rule.alert_type == "price_target":
             if rule.direction == "above":
                 return quote.price >= rule.threshold
             else:
@@ -165,9 +208,7 @@ class AlertEngine:
 
     def _get_current_value(self, quote: StockQuote, rule: AlertRule) -> float:
         """Get the relevant current value for the alert type."""
-        if rule.alert_type == "price_pct_change":
-            return quote.change_pct
-        elif rule.alert_type in ("price_target", "limit_up", "limit_down"):
+        if rule.alert_type in ("price_target", "limit_up", "limit_down"):
             return quote.price
         elif rule.alert_type == "volume_spike":
             avg_vol = self.get_avg_volume(quote.code)

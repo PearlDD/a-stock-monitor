@@ -40,6 +40,9 @@ def register_jobs(
     refresh_calendar_func,  # type: ignore[no-untyped-def]
     health_check_func,  # type: ignore[no-untyped-def]
     check_news_func=None,  # type: ignore[no-untyped-def]
+    reset_daily_alerts_func=None,  # type: ignore[no-untyped-def]
+    refresh_sector_rotation_func=None,  # type: ignore[no-untyped-def]
+    check_capital_flow_func=None,  # type: ignore[no-untyped-def]
 ) -> None:
     """Register all scheduled jobs.
 
@@ -127,6 +130,51 @@ def register_jobs(
             ),
             id="check_news",
             name="Check breaking news",
+            replace_existing=True,
+        )
+
+    # Reset daily alert fired state at 09:30 CST
+    if reset_daily_alerts_func:
+        scheduler.add_job(
+            reset_daily_alerts_func,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour=9,
+                minute=30,
+                timezone=SHANGHAI_TZ_STR,
+            ),
+            id="reset_daily_alerts",
+            name="Reset daily alert fired state",
+            replace_existing=True,
+        )
+
+    # Refresh sector rotation data at 09:00 CST
+    if refresh_sector_rotation_func:
+        scheduler.add_job(
+            refresh_sector_rotation_func,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour=9,
+                minute=0,
+                timezone=SHANGHAI_TZ_STR,
+            ),
+            id="refresh_sector_rotation",
+            name="Refresh sector rotation prediction",
+            replace_existing=True,
+        )
+
+    # Check capital flow every 5 minutes during trading hours
+    if check_capital_flow_func:
+        scheduler.add_job(
+            check_capital_flow_func,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour="9-11,13-14",
+                minute="*/5",
+                timezone=SHANGHAI_TZ_STR,
+            ),
+            id="check_capital_flow",
+            name="Check large capital inflows",
             replace_existing=True,
         )
 

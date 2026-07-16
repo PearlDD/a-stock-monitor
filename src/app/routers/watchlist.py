@@ -114,6 +114,7 @@ async def list_alerts():
                     "threshold": r["threshold"],
                     "direction": r["direction"],
                     "enabled": bool(r["enabled"]),
+                    "triggered_at": r["triggered_at"],
                 }
                 for r in rows
             ]
@@ -124,7 +125,6 @@ async def list_alerts():
 async def create_alert(rule: AlertRuleCreate):
     """Create a new alert rule."""
     valid_types = {
-        "price_pct_change",
         "price_target",
         "limit_up",
         "limit_down",
@@ -261,46 +261,6 @@ async def test_push():
     if not ok:
         raise HTTPException(status_code=502, detail="Push test failed")
     return {"status": "ok", "message": "Test notification sent"}
-
-
-@router.get("/setup")
-async def get_setup_guide():
-    """Get setup guide with PushPlus onboarding steps."""
-    return {
-        "title": "系统配置指南",
-        "steps": [
-            {
-                "step": 1,
-                "title": "注册PushPlus",
-                "description": "访问 pushplus.plus 注册账号，关注公众号获取Token",
-            },
-            {
-                "step": 2,
-                "title": "配置Token",
-                "description": "在设置页面输入PushPlus Token并保存",
-            },
-            {
-                "step": 3,
-                "title": "测试推送",
-                "description": "点击'发送测试'按钮确认推送正常工作",
-            },
-            {
-                "step": 4,
-                "title": "添加自选股",
-                "description": "在首页搜索并添加要监控的股票",
-            },
-            {
-                "step": 5,
-                "title": "设置提醒",
-                "description": "为自选股设置价格提醒规则，系统会在触发时自动推送",
-            },
-        ],
-        "notes": [
-            "PushPlus每日推送上限180条，请合理设置提醒规则",
-            "数据来源为AKShare，可能存在延迟，仅供参考",
-            "所有信息不构成投资建议，投资需谨慎",
-        ],
-    }
 
 
 @router.get("/push-quota")

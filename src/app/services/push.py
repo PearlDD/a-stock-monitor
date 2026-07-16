@@ -171,7 +171,6 @@ def format_alert_message(
     Returns (title, content) tuple.
     """
     type_labels = {
-        "price_pct_change": "涨跌幅提醒",
         "price_target": "目标价提醒",
         "limit_up": "涨停提醒",
         "limit_down": "跌停提醒",
@@ -180,14 +179,7 @@ def format_alert_message(
     label = type_labels.get(alert_type, "股票提醒")
     title = f"📊 {stock_name} {label}"
 
-    if alert_type == "price_pct_change":
-        direction = "涨" if current_value > 0 else "跌"
-        content = (
-            f"{stock_name}({stock_code})\n"
-            f"当前{direction}幅: {abs(current_value):.2f}%\n"
-            f"提醒阈值: {abs(threshold or 0):.2f}%"
-        )
-    elif alert_type == "price_target":
+    if alert_type == "price_target":
         content = (
             f"{stock_name}({stock_code})\n"
             f"当前价格: ¥{current_value:.2f}\n"

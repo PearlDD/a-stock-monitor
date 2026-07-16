@@ -83,8 +83,8 @@ class TestAlertRouter:
             json={
                 "stock_code": "600519",
                 "stock_name": "贵州茅台",
-                "alert_type": "price_pct_change",
-                "threshold": 5.0,
+                "alert_type": "price_target",
+                "threshold": 1800.0,
             },
         )
         assert resp.status_code == 200
@@ -94,7 +94,7 @@ class TestAlertRouter:
         alerts = resp.json()["alerts"]
         assert len(alerts) == 1
         assert alerts[0]["stock_code"] == "600519"
-        assert alerts[0]["threshold"] == 5.0
+        assert alerts[0]["threshold"] == 1800.0
 
     def test_invalid_alert_type(self, client: TestClient):
         resp = client.post(
@@ -103,6 +103,19 @@ class TestAlertRouter:
                 "stock_code": "600519",
                 "stock_name": "贵州茅台",
                 "alert_type": "invalid_type",
+                "threshold": 5.0,
+            },
+        )
+        assert resp.status_code == 400
+
+    def test_price_pct_change_rejected(self, client: TestClient):
+        """price_pct_change alert type should be rejected."""
+        resp = client.post(
+            "/api/alerts",
+            json={
+                "stock_code": "600519",
+                "stock_name": "贵州茅台",
+                "alert_type": "price_pct_change",
                 "threshold": 5.0,
             },
         )
@@ -230,12 +243,9 @@ class TestSettingsRouter:
         assert "limit" in data
         assert data["limit"] == 180
 
-    def test_get_setup_guide(self, client: TestClient):
+    def test_setup_guide_removed(self, client: TestClient):
         resp = client.get("/api/setup")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["steps"]) == 5
-        assert len(data["notes"]) == 3
+        assert resp.status_code in (404, 405)
 
     def test_health_endpoint(self, client: TestClient):
         resp = client.get("/health")
@@ -284,3 +294,56 @@ class TestAIRouter:
         assert resp.status_code == 200
         data = resp.json()
         assert "summary" in data
+
+    def test_sector_rotation_endpoint(self, client: TestClient, monkeypatch):
+        import app.services.sector_rotation as sector_mod
+
+        async def _mock_predict(*a, **kw):
+            return {
+                "predictions": [{"sector": "新能源", "reason": "test", "leaders": []}],
+                "cached": False,
+                "disclaimer": "以上由AI预测，仅供参考，不构成投资建议",
+            }
+
+        monkeypatch.setattr(sector_mod, "predict_sector_rotation", _mock_predict)
+        resp = client.get("/api/ai/sector-rotation")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "predictions" in data
+        assert "disclaimer" in data
+
+    def test_capital_flow_top_endpoint(self, client: TestClient, monkeypatch):
+        import app.services.capital_flow as flow_mod
+
+        async def _mock_top(*a, **kw):
+            return {
+                "stocks": [{
+                    "code": "600519", "name": "贵州茅台",
+                    "net_inflow": 1e8, "change_pct": 3.5,
+                }],
+                "cached": False,
+            }
+
+        monkeypatch.setattr(flow_mod, "get_top_capital_flow", _mock_top)
+        resp = client.get("/api/ai/capital-flow/top")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "stocks" in data
+        assert len(data["stocks"]) == 1
+
+    def test_alert_triggered_at_field(self, client: TestClient):
+        """Alert list should include triggered_at field."""
+        client.post("/api/watchlist", json={"code": "600519", "name": "贵州茅台"})
+        client.post(
+            "/api/alerts",
+            json={
+                "stock_code": "600519",
+                "stock_name": "贵州茅台",
+                "alert_type": "price_target",
+                "threshold": 1900.0,
+            },
+        )
+        resp = client.get("/api/alerts")
+        alert = resp.json()["alerts"][0]
+        assert "triggered_at" in alert
+        assert alert["triggered_at"] is None

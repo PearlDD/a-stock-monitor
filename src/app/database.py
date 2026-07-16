@@ -33,8 +33,25 @@ CREATE TABLE IF NOT EXISTS alert_rules (
     threshold REAL NOT NULL,
     direction TEXT DEFAULT 'above',
     enabled INTEGER DEFAULT 1,
+    triggered_at TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (stock_code) REFERENCES stocks(code)
+);
+
+CREATE TABLE IF NOT EXISTS capital_flow_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_code TEXT NOT NULL,
+    stock_name TEXT NOT NULL DEFAULT '',
+    net_inflow REAL NOT NULL,
+    change_pct REAL DEFAULT 0,
+    recorded_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS capital_flow_alerts_seen (
+    stock_code TEXT NOT NULL,
+    alert_date TEXT NOT NULL,
+    alerted_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (stock_code, alert_date)
 );
 
 CREATE TABLE IF NOT EXISTS price_snapshots (
@@ -93,6 +110,10 @@ CREATE TABLE IF NOT EXISTS news_alerts_seen (
 CREATE INDEX IF NOT EXISTS idx_ai_log_stock ON ai_log(stock_code);
 CREATE INDEX IF NOT EXISTS idx_ai_log_time ON ai_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_news_alerts_seen_time ON news_alerts_seen(seen_at);
+CREATE INDEX IF NOT EXISTS idx_cf_snapshots_time
+    ON capital_flow_snapshots(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_cf_snapshots_code
+    ON capital_flow_snapshots(stock_code);
 """
 
 _DB_PATH = "data/stock_monitor.db"

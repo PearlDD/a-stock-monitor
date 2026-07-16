@@ -32,10 +32,15 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
 
     scheduler = create_scheduler()
 
+    # Shared alert engine instance (persists daily fired state)
+    from app.services.alerting import AlertEngine
+
+    _alert_engine = AlertEngine()
+
     async def poll_and_alert() -> None:
         """Poll quotes and evaluate alert rules."""
         from app.database import get_db
-        from app.services.alerting import AlertEngine, AlertRule
+        from app.services.alerting import ONE_SHOT_ALERT_TYPES, AlertRule
         from app.services.market_data import get_realtime_quotes
         from app.services.push import PushPlusClient, format_alert_message
         from app.services.trading_calendar import should_poll
@@ -71,10 +76,31 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
         if not rules:
             return
 
-        engine = AlertEngine()
-        triggered = await engine.evaluate(quotes, rules)
+        triggered = await _alert_engine.evaluate(quotes, rules)
         if not triggered:
             return
+
+        # Handle one-shot alerts: disable after triggering
+        for alert in triggered:
+            if alert.rule.alert_type in ONE_SHOT_ALERT_TYPES:
+                from datetime import datetime
+                from zoneinfo import ZoneInfo
+
+                now_str = datetime.now(
+                    tz=ZoneInfo("Asia/Shanghai")
+                ).strftime("%m-%d %H:%M")
+                async with get_db() as db:
+                    await db.execute(
+                        "UPDATE alert_rules SET enabled = 0, triggered_at = ?"
+                        " WHERE id = ?",
+                        (now_str, alert.rule.id),
+                    )
+                    await db.commit()
+                log.info(
+                    "one_shot_alert_disabled",
+                    rule_id=alert.rule.id,
+                    code=alert.rule.stock_code,
+                )
 
         settings = get_settings()
         if not settings.pushplus_token:
@@ -239,9 +265,29 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
         await client.send_alert("📰 资讯快报", "\n".join(lines))
         log.info("news_alerts_sent", count=len(new_alerts))
 
+    async def reset_daily_alerts() -> None:
+        """Reset daily alert fired state at 09:30 CST."""
+        _alert_engine.reset_daily_fired()
+
+    async def refresh_sector_rotation() -> None:
+        """Refresh sector rotation prediction at 09:00 CST."""
+        from app.services.sector_rotation import predict_sector_rotation
+
+        await predict_sector_rotation()
+        log.info("sector_rotation_refreshed")
+
+    async def check_capital_flow() -> None:
+        """Check for large capital inflows every 5 min during trading hours."""
+        from app.services.capital_flow import check_and_alert_capital_flow
+
+        await check_and_alert_capital_flow()
+
     register_jobs(
         scheduler, poll_and_alert, daily_digest, refresh_calendar, health_check,
         check_news,
+        reset_daily_alerts_func=reset_daily_alerts,
+        refresh_sector_rotation_func=refresh_sector_rotation,
+        check_capital_flow_func=check_capital_flow,
     )
     scheduler.start()
     log.info("scheduler_started")

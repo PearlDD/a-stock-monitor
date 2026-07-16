@@ -38,11 +38,14 @@ export const pushAnalysis = (code) => api.post(`/ai/push-analysis/${code}`)
 export const screenStocks = (data) => api.post('/ai/screen', data)
 export const getPresets = () => api.get('/ai/presets')
 
+// Sector rotation & Capital flow
+export const getSectorRotation = () => api.get('/ai/sector-rotation')
+export const getCapitalFlowTop = () => api.get('/ai/capital-flow/top')
+
 // Settings
 export const getSettings = () => api.get('/settings')
 export const updateSettings = (data) => api.post('/settings', data)
 export const testPush = () => api.post('/test-push')
 export const getPushQuota = () => api.get('/push-quota')
-export const getSetupGuide = () => api.get('/setup')
 
 export default api
