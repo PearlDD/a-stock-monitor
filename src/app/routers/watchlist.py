@@ -247,6 +247,7 @@ async def update_settings(settings: SettingsUpdate):
 
 
 @router.post("/test-push")
+@router.post("/settings/test-push")
 async def test_push():
     """Send a test push notification."""
     from app.config import get_settings as _get_settings
@@ -257,13 +258,17 @@ async def test_push():
         raise HTTPException(status_code=400, detail="PushPlus token not configured")
 
     client = PushPlusClient(s.pushplus_token)
-    ok = await client.send_test()
+    ok = await client.send_alert(
+        "🔔 测试通知",
+        "盯盘助手测试消息 - 推送配置成功！",
+    )
     if not ok:
         raise HTTPException(status_code=502, detail="Push test failed")
     return {"status": "ok", "message": "Test notification sent"}
 
 
 @router.get("/push-quota")
+@router.get("/push/quota")
 async def get_push_quota():
     """Get current daily push usage."""
     from app.config import get_settings as _get_settings

@@ -151,7 +151,13 @@ async def screen_stocks(
     """Screen stocks by AI-parsed criteria or predefined filter.
 
     Returns dict with 'stocks' list and 'filter_used'.
+    In demo mode, returns pre-built mock results.
     """
+    from app.config import get_settings
+
+    if get_settings().data_mode == "mock":
+        return _demo_screen_results(query=query, preset=preset)
+
     if not await _check_rate_limit():
         return {
             "stocks": [],
@@ -193,3 +199,42 @@ async def screen_stocks(
 
     log.info("screen_complete", total_stocks=len(market_data), matched=len(results))
     return {"stocks": results, "filter_used": filters}
+
+
+def _demo_screen_results(
+    query: str | None = None, preset: str | None = None
+) -> dict:
+    """Return pre-built demo screening results."""
+    demo_stocks = [
+        {"code": "600519", "name": "贵州茅台", "price": 1688.0, "change_pct": 1.5,
+         "pe_ratio": 28.5, "pb_ratio": 9.2, "market_cap": 2.1e12, "volume": 25000},
+        {"code": "000858", "name": "五粮液", "price": 152.3, "change_pct": 2.1,
+         "pe_ratio": 22.1, "pb_ratio": 5.8, "market_cap": 5.9e11, "volume": 45000},
+        {"code": "601318", "name": "中国平安", "price": 48.6, "change_pct": 0.8,
+         "pe_ratio": 8.5, "pb_ratio": 1.1, "market_cap": 8.9e11, "volume": 82000},
+        {"code": "600036", "name": "招商银行", "price": 35.2, "change_pct": 0.3,
+         "pe_ratio": 6.2, "pb_ratio": 0.9, "market_cap": 8.9e11, "volume": 65000},
+        {"code": "002594", "name": "比亚迪", "price": 268.5, "change_pct": 3.2,
+         "pe_ratio": 25.3, "pb_ratio": 4.5, "market_cap": 7.8e11, "volume": 55000},
+        {"code": "300750", "name": "宁德时代", "price": 195.8, "change_pct": 2.8,
+         "pe_ratio": 20.1, "pb_ratio": 3.8, "market_cap": 4.8e11, "volume": 48000},
+        {"code": "601899", "name": "紫金矿业", "price": 18.5, "change_pct": 4.1,
+         "pe_ratio": 12.3, "pb_ratio": 3.2, "market_cap": 4.9e11, "volume": 120000},
+        {"code": "600030", "name": "中信证券", "price": 22.8, "change_pct": 1.9,
+         "pe_ratio": 15.6, "pb_ratio": 1.5, "market_cap": 3.4e11, "volume": 95000},
+    ]
+
+    # For preset filters, apply them to demo data
+    if preset and preset in PREDEFINED_FILTERS:
+        filters = PREDEFINED_FILTERS[preset]["filters"]
+        results = _apply_filters(demo_stocks, filters)
+        results.sort(key=lambda s: s.get("change_pct", 0), reverse=True)
+        return {"stocks": results, "filter_used": filters}
+
+    # For free-text queries, return a relevant subset
+    if query:
+        results = demo_stocks[:6]
+        results.sort(key=lambda s: s.get("change_pct", 0), reverse=True)
+        return {"stocks": results, "filter_used": {"query": query}}
+
+    return {"stocks": [], "filter_used": {}, "error": "请输入筛选条件或选择预设。"}

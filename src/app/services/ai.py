@@ -188,7 +188,18 @@ async def analyze_stock(code: str) -> dict[str, Any]:
 
     Gathers quotes + financials + news, sends to AI for analysis.
     Returns dict with 'analysis' text and 'cached' flag.
+    In demo mode, returns a pre-built analysis.
     """
+    settings = get_settings()
+    if settings.data_mode == "mock":
+        demo_text = (
+            "近期走势：该股近5日震荡整理，成交量温和。\n"
+            "基本面：公司营收稳健，市盈率处于行业中等水平。\n"
+            "风险提示：注意大盘系统性风险。\n\n"
+            f"{AI_DISCLAIMER}"
+        )
+        return {"analysis": demo_text, "cached": False}
+
     cache = get_cache()
     cache_key = f"ai_analysis:{code}"
     cached = await cache.get(cache_key)
