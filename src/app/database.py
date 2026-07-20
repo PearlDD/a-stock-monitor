@@ -89,17 +89,6 @@ CREATE INDEX IF NOT EXISTS idx_price_snapshots_time ON price_snapshots(recorded_
 CREATE INDEX IF NOT EXISTS idx_push_history_time ON push_history(sent_at);
 CREATE INDEX IF NOT EXISTS idx_news_cache_stock ON news_cache(stock_code);
 
-CREATE TABLE IF NOT EXISTS ai_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    stock_code TEXT NOT NULL,
-    request_type TEXT NOT NULL,
-    prompt TEXT NOT NULL,
-    response TEXT NOT NULL,
-    model TEXT DEFAULT '',
-    tokens_used INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS news_alerts_seen (
     headline_hash TEXT PRIMARY KEY,
     stock_code TEXT NOT NULL,
@@ -107,8 +96,6 @@ CREATE TABLE IF NOT EXISTS news_alerts_seen (
     seen_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_ai_log_stock ON ai_log(stock_code);
-CREATE INDEX IF NOT EXISTS idx_ai_log_time ON ai_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_news_alerts_seen_time ON news_alerts_seen(seen_at);
 CREATE INDEX IF NOT EXISTS idx_cf_snapshots_time
     ON capital_flow_snapshots(recorded_at);

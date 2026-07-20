@@ -31,16 +31,8 @@ export const getFinancials = (code) => api.get(`/stocks/${code}/financials`)
 export const getPriceHistory = (code, days = 5) => api.get(`/stocks/${code}/history`, { params: { days } })
 export const getAnnouncements = (code, limit = 10) => api.get(`/stocks/${code}/announcements`, { params: { limit } })
 
-// AI
-export const analyzeStock = (code) => api.post(`/ai/analyze/${code}`)
-export const summarizeNews = (code) => api.post(`/ai/summarize-news/${code}`)
-export const pushAnalysis = (code) => api.post(`/ai/push-analysis/${code}`)
-export const screenStocks = (data) => api.post('/ai/screen', data)
-export const getPresets = () => api.get('/ai/presets')
-
-// Sector rotation & Capital flow
-export const getSectorRotation = () => api.get('/ai/sector-rotation')
-export const getCapitalFlowTop = () => api.get('/ai/capital-flow/top')
+// Capital flow
+export const getCapitalFlowTop = () => api.get('/capital-flow/top')
 
 // Settings
 export const getSettings = () => api.get('/settings')

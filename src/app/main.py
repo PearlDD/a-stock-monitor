@@ -269,13 +269,6 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
         """Reset daily alert fired state at 09:30 CST."""
         _alert_engine.reset_daily_fired()
 
-    async def refresh_sector_rotation() -> None:
-        """Refresh sector rotation prediction at 09:00 CST."""
-        from app.services.sector_rotation import predict_sector_rotation
-
-        await predict_sector_rotation()
-        log.info("sector_rotation_refreshed")
-
     async def check_capital_flow() -> None:
         """Check for large capital inflows every 5 min during trading hours."""
         from app.services.capital_flow import check_and_alert_capital_flow
@@ -286,7 +279,6 @@ async def lifespan(application: FastAPI):  # type: ignore[no-untyped-def]
         scheduler, poll_and_alert, daily_digest, refresh_calendar, health_check,
         check_news,
         reset_daily_alerts_func=reset_daily_alerts,
-        refresh_sector_rotation_func=refresh_sector_rotation,
         check_capital_flow_func=check_capital_flow,
     )
     scheduler.start()
@@ -343,14 +335,12 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Register API routers
-    from app.routers.ai import router as ai_router
     from app.routers.capital_flow import router as capital_flow_router
     from app.routers.stocks import router as stocks_router
     from app.routers.watchlist import router as watchlist_router
 
     application.include_router(stocks_router)
     application.include_router(watchlist_router)
-    application.include_router(ai_router)
     application.include_router(capital_flow_router)
 
     return application

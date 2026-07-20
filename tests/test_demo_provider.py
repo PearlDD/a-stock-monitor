@@ -116,14 +116,6 @@ class TestDemoModeIntegration:
         assert status == "demo"
 
     @pytest.mark.asyncio
-    async def test_sector_rotation_returns_demo(self):
-        from app.services.sector_rotation import predict_sector_rotation
-
-        result = await predict_sector_rotation()
-        assert len(result["sectors"]) > 0
-        assert "演示数据" in result["disclaimer"]
-
-    @pytest.mark.asyncio
     async def test_capital_flow_returns_demo(self):
         from app.services.capital_flow import get_top_capital_flow
 

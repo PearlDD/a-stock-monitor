@@ -1,4 +1,4 @@
-"""Tests for API router endpoints (watchlist, stocks, AI)."""
+"""Tests for API router endpoints (watchlist, stocks)."""
 
 from __future__ import annotations
 
@@ -258,60 +258,7 @@ class TestSettingsRouter:
         assert len(resp.headers["x-request-id"]) == 12
 
 
-class TestAIRouter:
-    def test_get_presets(self, client: TestClient):
-        resp = client.get("/api/ai/presets")
-        assert resp.status_code == 200
-        presets = resp.json()["presets"]
-        assert len(presets) == 3
-        names = [p["name"] for p in presets]
-        assert "低估值蓝筹" in names
-        assert "近期强势" in names
-        assert "高股息" in names
-
-    def test_screen_no_criteria(self, client: TestClient):
-        resp = client.post("/api/ai/screen", json={})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "error" in data
-
-    def test_analyze_no_key(self, client: TestClient, monkeypatch):
-        async def _no_quotes(*a, **kw):
-            return []
-
-        monkeypatch.setattr(market_data, "get_realtime_quotes", _no_quotes)
-        resp = client.post("/api/ai/analyze/600519")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "analysis" in data
-
-    def test_summarize_no_news(self, client: TestClient, monkeypatch):
-        async def _no_news(*a, **kw):
-            return []
-
-        monkeypatch.setattr(market_data, "get_stock_news", _no_news)
-        resp = client.post("/api/ai/summarize-news/600519")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "summary" in data
-
-    def test_sector_rotation_endpoint(self, client: TestClient, monkeypatch):
-        import app.services.sector_rotation as sector_mod
-
-        async def _mock_predict(*a, **kw):
-            return {
-                "sectors": [{"sector": "新能源", "reason": "test", "leaders": []}],
-                "cached": False,
-                "disclaimer": "以上由AI预测，仅供参考，不构成投资建议",
-            }
-
-        monkeypatch.setattr(sector_mod, "predict_sector_rotation", _mock_predict)
-        resp = client.get("/api/ai/sector-rotation")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "sectors" in data
-        assert "disclaimer" in data
-
+class TestCapitalFlowRouter:
     def test_capital_flow_top_endpoint(self, client: TestClient, monkeypatch):
         import app.services.capital_flow as flow_mod
 

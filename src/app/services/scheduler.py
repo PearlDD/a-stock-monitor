@@ -41,7 +41,6 @@ def register_jobs(
     health_check_func,  # type: ignore[no-untyped-def]
     check_news_func=None,  # type: ignore[no-untyped-def]
     reset_daily_alerts_func=None,  # type: ignore[no-untyped-def]
-    refresh_sector_rotation_func=None,  # type: ignore[no-untyped-def]
     check_capital_flow_func=None,  # type: ignore[no-untyped-def]
 ) -> None:
     """Register all scheduled jobs.
@@ -145,21 +144,6 @@ def register_jobs(
             ),
             id="reset_daily_alerts",
             name="Reset daily alert fired state",
-            replace_existing=True,
-        )
-
-    # Refresh sector rotation data at 09:00 CST
-    if refresh_sector_rotation_func:
-        scheduler.add_job(
-            refresh_sector_rotation_func,
-            CronTrigger(
-                day_of_week="mon-fri",
-                hour=9,
-                minute=0,
-                timezone=SHANGHAI_TZ_STR,
-            ),
-            id="refresh_sector_rotation",
-            name="Refresh sector rotation prediction",
             replace_existing=True,
         )
 

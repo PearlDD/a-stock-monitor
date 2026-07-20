@@ -32,21 +32,6 @@ def mock_client(test_db, monkeypatch):
     return TestClient(app)
 
 
-class TestSectorRotationDemo:
-    def test_returns_predictions_in_mock_mode(self, mock_client):
-        resp = mock_client.get("/api/ai/sector-rotation")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "sectors" in data
-        sectors = data["sectors"]
-        assert 3 <= len(sectors) <= 5
-        for p in sectors:
-            assert "sector" in p
-            assert "reason" in p
-            assert "leaders" in p
-            assert len(p["leaders"]) > 0
-
-
 class TestCapitalFlowDemo:
     def test_returns_stocks_in_mock_mode(self, mock_client):
         resp = mock_client.get("/api/capital-flow/top")
@@ -117,47 +102,3 @@ class TestTestPushRoute:
         assert "推送配置成功" in sent_messages[0][1]
 
 
-class TestAIAnalyzeDemo:
-    def test_returns_analysis_in_mock_mode(self, mock_client):
-        resp = mock_client.post("/api/ai/analyze/600519")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "analysis" in data
-        analysis = data["analysis"]
-        assert "近期走势" in analysis
-        assert "基本面" in analysis
-        assert "风险提示" in analysis
-        assert "仅供参考" in analysis
-
-    def test_works_for_any_stock_code(self, mock_client):
-        resp = mock_client.post("/api/ai/analyze/000001")
-        assert resp.status_code == 200
-        assert "近期走势" in resp.json()["analysis"]
-
-
-class TestAIScreenDemo:
-    def test_returns_stocks_for_query(self, mock_client):
-        resp = mock_client.post("/api/ai/screen", json={"query": "低估值"})
-        assert resp.status_code == 200
-        data = resp.json()
-        stocks = data["stocks"]
-        assert 5 <= len(stocks) <= 8
-        for s in stocks:
-            assert "code" in s
-            assert "name" in s
-            assert "price" in s
-
-    def test_returns_filtered_for_preset(self, mock_client):
-        resp = mock_client.post("/api/ai/screen", json={"preset": "低估值蓝筹"})
-        assert resp.status_code == 200
-        data = resp.json()
-        stocks = data["stocks"]
-        assert len(stocks) > 0
-        for s in stocks:
-            assert s["pe_ratio"] <= 15
-            assert s["pb_ratio"] <= 2
-
-    def test_no_criteria_returns_error(self, mock_client):
-        resp = mock_client.post("/api/ai/screen", json={})
-        assert resp.status_code == 200
-        assert "error" in resp.json()

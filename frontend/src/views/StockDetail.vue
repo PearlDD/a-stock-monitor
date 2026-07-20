@@ -99,42 +99,6 @@
           <div class="news-meta">{{ item.date }}</div>
         </div>
       </van-tab>
-
-      <van-tab title="分析">
-        <div class="analysis-section">
-          <van-button
-            type="primary" block round
-            :loading="analyzing"
-            loading-text="分析中..."
-            @click="onAnalyze"
-          >
-            一键分析
-          </van-button>
-
-          <div v-if="analysis" class="analysis-result">
-            <div class="analysis-text">{{ analysis }}</div>
-            <van-button
-              size="small" type="success" round
-              :loading="pushing"
-              @click="onPushAnalysis"
-              style="margin-top: 12px;"
-            >
-              推送到微信
-            </van-button>
-          </div>
-
-          <div class="info-grid" v-if="info" style="margin-top: 12px;">
-            <div class="info-item">
-              <span class="label">行业</span>
-              <span>{{ info.sector || '-' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">上市日期</span>
-              <span>{{ info.list_date || '-' }}</span>
-            </div>
-          </div>
-        </div>
-      </van-tab>
     </van-tabs>
   </div>
 </template>
@@ -142,11 +106,9 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { showToast } from 'vant'
 import {
-  getQuotes, getStockInfo, getStockNews,
+  getQuotes, getStockNews,
   getFinancials, getPriceHistory, getAnnouncements,
-  analyzeStock, pushAnalysis as pushAnalysisApi
 } from '../api'
 
 const route = useRoute()
@@ -156,13 +118,9 @@ const activeTab = ref(0)
 
 const quote = ref({ price: 0, change_pct: 0, prev_close: 0, open: 0, high: 0, low: 0, volume: 0, amount: 0 })
 const news = ref([])
-const info = ref(null)
 const financials = ref(null)
 const history = ref([])
 const announcements = ref([])
-const analysis = ref('')
-const analyzing = ref(false)
-const pushing = ref(false)
 const newsLoading = ref(false)
 const newsFinished = ref(false)
 const newsPage = ref(0)
@@ -197,13 +155,6 @@ const loadMoreNews = async () => {
   } finally {
     newsLoading.value = false
   }
-}
-
-const fetchInfo = async () => {
-  try {
-    const { data } = await getStockInfo(code)
-    info.value = data.info
-  } catch (e) { /* ignore */ }
 }
 
 const fetchFinancials = async () => {
@@ -283,30 +234,6 @@ const drawChart = () => {
   })
 }
 
-const onAnalyze = async () => {
-  analyzing.value = true
-  try {
-    const { data } = await analyzeStock(code)
-    analysis.value = data.analysis || data.error || '分析失败'
-  } catch (e) {
-    showToast('分析请求失败')
-  } finally {
-    analyzing.value = false
-  }
-}
-
-const onPushAnalysis = async () => {
-  pushing.value = true
-  try {
-    const { data } = await pushAnalysisApi(code)
-    showToast(data.status === 'ok' ? '已推送到微信' : (data.message || '推送失败'))
-  } catch (e) {
-    showToast('推送失败')
-  } finally {
-    pushing.value = false
-  }
-}
-
 const formatPrice = (p) => (p || 0).toFixed(2)
 const formatChange = (pct) => {
   if (!pct) return '0.00%'
@@ -331,7 +258,6 @@ const formatTime = (t) => {
 
 onMounted(() => {
   fetchQuote()
-  fetchInfo()
   fetchFinancials()
   fetchHistory()
   fetchAnnouncements()
@@ -392,17 +318,4 @@ onMounted(() => {
   line-height: 1.5;
 }
 .news-meta { font-size: 12px; color: #999; margin-top: 6px; }
-.analysis-section { padding: 16px; }
-.analysis-result {
-  margin-top: 16px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-}
-.analysis-text {
-  font-size: 14px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  color: #333;
-}
 </style>
