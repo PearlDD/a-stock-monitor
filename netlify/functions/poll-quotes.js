@@ -1,5 +1,5 @@
 import { getSupabase } from './shared/supabase.js'
-import { buildTencentUrl, parseTencentResponse } from './shared/tencent.js'
+import { buildTencentUrl, parseTencentResponse, fetchTencentGBK } from './shared/tencent.js'
 import { sendPush } from './shared/pushplus.js'
 import { isTradingHours } from './shared/trading-hours.js'
 
@@ -33,8 +33,7 @@ export default async () => {
   // Get unique stock codes
   const codes = [...new Set(rules.map((r) => r.stock_code))]
   const tencentUrl = buildTencentUrl(codes)
-  const res = await fetch(tencentUrl)
-  const text = await res.text()
+  const text = await fetchTencentGBK(tencentUrl)
   const quotes = parseTencentResponse(text)
 
   const quoteMap = {}

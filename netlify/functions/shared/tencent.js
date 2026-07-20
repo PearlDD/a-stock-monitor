@@ -1,3 +1,5 @@
+import iconv from 'iconv-lite'
+
 /**
  * Tencent Finance API (qt.gtimg.cn) quote parser.
  *
@@ -6,7 +8,19 @@
  *  1: name, 2: code, 3: current price, 4: prev close, 5: open,
  *  6: volume (lots), 30: date, 31: high, 32: low,
  *  36: turnover rate, 37: PE, 38: amount (万), 44: total market cap (亿)
+ *
+ * IMPORTANT: Tencent API returns GBK-encoded text.
+ * Use fetchTencentGBK() instead of fetch().text() to get proper UTF-8.
  */
+
+/**
+ * Fetch a Tencent API URL and decode the GBK response to UTF-8 string.
+ */
+export async function fetchTencentGBK(url) {
+  const res = await fetch(url)
+  const buffer = await res.arrayBuffer()
+  return iconv.decode(Buffer.from(buffer), 'gbk')
+}
 
 export function buildTencentUrl(codes) {
   const mapped = codes.map((code) => {

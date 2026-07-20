@@ -1,3 +1,4 @@
+import { fetchTencentGBK } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
 
 /**
@@ -16,8 +17,7 @@ export default async (req) => {
 
   try {
     const searchUrl = `https://smartbox.gtimg.cn/s3/?q=${encodeURIComponent(q)}&t=gp`
-    const res = await fetch(searchUrl)
-    const text = await res.text()
+    const text = await fetchTencentGBK(searchUrl)
 
     // Response format: v_hint="sh~600519~gp~贵州茅台~...^sz~000001~gp~平安银行~..."
     const match = text.match(/"([^"]*)"/)

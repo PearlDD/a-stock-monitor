@@ -1,4 +1,4 @@
-import { buildTencentUrl, parseTencentResponse } from './shared/tencent.js'
+import { buildTencentUrl, parseTencentResponse, fetchTencentGBK } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
 
 export default async (req) => {
@@ -18,8 +18,7 @@ export default async (req) => {
 
   try {
     const tencentUrl = buildTencentUrl(codes)
-    const res = await fetch(tencentUrl)
-    const text = await res.text()
+    const text = await fetchTencentGBK(tencentUrl)
     const quotes = parseTencentResponse(text)
 
     return jsonResponse({ quotes, market_status: 'live' })

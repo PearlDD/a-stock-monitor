@@ -1,3 +1,4 @@
+import { fetchTencentGBK } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
 
 /**
@@ -18,8 +19,7 @@ export default async (req) => {
 
   try {
     const url = `http://qt.gtimg.cn/q=${POPULAR_STOCKS.join(',')}`
-    const res = await fetch(url)
-    const text = await res.text()
+    const text = await fetchTencentGBK(url)
 
     const stocks = []
     const lines = text.split(';').filter((l) => l.includes('~'))

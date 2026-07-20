@@ -1,6 +1,10 @@
 <template>
   <div class="home">
-    <van-nav-bar title="自选股" />
+    <van-nav-bar title="自选股">
+      <template #right>
+        <van-icon name="plus" size="20" @click="showSearch = true" />
+      </template>
+    </van-nav-bar>
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
       <van-list
         v-model:loading="loading"
@@ -29,16 +33,43 @@
         </div>
       </van-list>
     </van-pull-refresh>
+
+    <van-popup v-model:show="showSearch" position="top" :style="{ height: '80%' }">
+      <van-search
+        v-model="searchQuery"
+        placeholder="输入股票代码或名称"
+        show-action
+        @search="onSearch"
+        @cancel="showSearch = false"
+      />
+      <van-list :finished="true" finished-text="">
+        <van-cell
+          v-for="item in searchResults"
+          :key="item.code"
+          :title="`${item.name} (${item.code})`"
+          :label="item.market"
+          is-link
+          @click="onAddStock(item)"
+        />
+        <van-empty v-if="searchQuery && !searchResults.length && !searching" description="无搜索结果" />
+      </van-list>
+    </van-popup>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getWatchlist, getQuotes } from '../api'
+import { showToast } from 'vant'
+import { getWatchlist, getQuotes, searchStocks, addToWatchlist } from '../api'
 
 const stocks = ref([])
 const loading = ref(false)
 const refreshing = ref(false)
+
+const showSearch = ref(false)
+const searchQuery = ref('')
+const searchResults = ref([])
+const searching = ref(false)
 
 const fetchData = async () => {
   try {
@@ -63,6 +94,31 @@ const fetchData = async () => {
 }
 
 const onRefresh = () => fetchData()
+
+const onSearch = async () => {
+  const q = searchQuery.value.trim()
+  if (!q) return
+  try {
+    searching.value = true
+    const { data } = await searchStocks(q)
+    searchResults.value = data.results || []
+  } finally {
+    searching.value = false
+  }
+}
+
+const onAddStock = async (item) => {
+  try {
+    await addToWatchlist({ code: item.code, name: item.name, market: item.market })
+    showToast(`已添加 ${item.name}`)
+    showSearch.value = false
+    searchQuery.value = ''
+    searchResults.value = []
+    await fetchData()
+  } catch {
+    showToast('添加失败')
+  }
+}
 
 // Chinese convention: red=up, green=down
 const priceClass = (stock) => {
