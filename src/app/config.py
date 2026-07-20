@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Data mode: 'mock' for demo data (no AKShare), 'live' for real data
     data_mode: str = "live"
 
+    # Data source for real-time quotes: 'tencent' or 'akshare' (default: tencent)
+    data_source: str = "tencent"
+
     # Logging
     log_level: str = "INFO"
 

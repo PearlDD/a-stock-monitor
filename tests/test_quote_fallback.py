@@ -34,6 +34,14 @@ def reset_circuit_breaker():
     get_circuit_breaker().reset()
 
 
+@pytest.fixture(autouse=True)
+def use_akshare_source(monkeypatch):
+    """Force AKShare path so these tests exercise the AKShare fallback logic."""
+    import app.services.market_data as md
+
+    monkeypatch.setattr(md, "_use_tencent", lambda: False)
+
+
 class TestMarketStatusStamping:
     def test_stamp_market_status_trading(self):
         quotes = [

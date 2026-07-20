@@ -121,6 +121,51 @@ async def _retry_akshare(func, *args, **kwargs):  # type: ignore[no-untyped-def]
     raise last_exc  # type: ignore[misc]
 
 
+def _use_tencent() -> bool:
+    from app.config import get_settings
+
+    return get_settings().data_source == "tencent"
+
+
+async def _fetch_quotes_from_source(codes: list[str]) -> list[StockQuote]:
+    """Fetch quotes using the configured data source (Tencent or AKShare)."""
+    if _use_tencent():
+        from app.providers.tencent import TencentProvider
+
+        provider = TencentProvider()
+        quotes = await provider.get_realtime_quotes(codes)
+        if quotes:
+            return quotes
+        log.warning("tencent_empty_fallback_akshare", codes=codes)
+
+    # AKShare fallback
+    import akshare as ak
+
+    df = await _retry_akshare(ak.stock_zh_a_spot_em)
+    now = datetime.now(tz=SHANGHAI_TZ)
+    all_quotes: list[StockQuote] = []
+    for _, row in df.iterrows():
+        try:
+            all_quotes.append(
+                StockQuote(
+                    code=str(row.get("代码", "")),
+                    name=str(row.get("名称", "")),
+                    price=float(row.get("最新价", 0) or 0),
+                    change_pct=float(row.get("涨跌幅", 0) or 0),
+                    volume=float(row.get("成交量", 0) or 0),
+                    amount=float(row.get("成交额", 0) or 0),
+                    high=float(row.get("最高", 0) or 0),
+                    low=float(row.get("最低", 0) or 0),
+                    open=float(row.get("今开", 0) or 0),
+                    prev_close=float(row.get("昨收", 0) or 0),
+                    timestamp=now,
+                )
+            )
+        except (ValueError, TypeError):
+            continue
+    return all_quotes
+
+
 async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
     """Fetch quotes for given stock codes.
 
@@ -150,31 +195,9 @@ async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
         return _stamp_market_status(quotes, market_status)
 
     try:
-        import akshare as ak
-
-        df = await _retry_akshare(ak.stock_zh_a_spot_em)
-        now = datetime.now(tz=SHANGHAI_TZ)
-        all_quotes: list[StockQuote] = []
-        for _, row in df.iterrows():
-            try:
-                all_quotes.append(
-                    StockQuote(
-                        code=str(row.get("代码", "")),
-                        name=str(row.get("名称", "")),
-                        price=float(row.get("最新价", 0) or 0),
-                        change_pct=float(row.get("涨跌幅", 0) or 0),
-                        volume=float(row.get("成交量", 0) or 0),
-                        amount=float(row.get("成交额", 0) or 0),
-                        high=float(row.get("最高", 0) or 0),
-                        low=float(row.get("最低", 0) or 0),
-                        open=float(row.get("今开", 0) or 0),
-                        prev_close=float(row.get("昨收", 0) or 0),
-                        timestamp=now,
-                        market_status=market_status,
-                    )
-                )
-            except (ValueError, TypeError):
-                continue
+        all_quotes = await _fetch_quotes_from_source(codes)
+        for q in all_quotes:
+            q.market_status = market_status
 
         await cache.set(cache_key, all_quotes, QUOTE_TTL)
         log.info("quotes_fetched", total=len(all_quotes), market_status=market_status)
@@ -187,6 +210,7 @@ async def get_realtime_quotes(codes: list[str]) -> list[StockQuote]:
             found_codes = {q.code for q in filtered}
             missing = [c for c in codes if c not in found_codes]
             if missing:
+                now = datetime.now(tz=SHANGHAI_TZ)
                 hist_quotes = await _fallback_hist_quotes(missing, now)
                 filtered.extend(hist_quotes)
 
