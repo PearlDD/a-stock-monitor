@@ -1,22 +1,12 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
-build/
-.eggs/
+# Dependencies
+node_modules/
 
-# Virtual environments
-.venv/
-venv/
+# Build output
+dist/
 
 # Environment variables
 .env
-
-# SQLite databases
-data/*.db
-*.db
+.env.local
 
 # IDE
 .idea/
@@ -24,13 +14,21 @@ data/*.db
 *.swp
 *.swo
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# OS
+.DS_Store
 
-# mypy
+# Netlify
+.netlify/
+
+# Python (legacy)
+__pycache__/
+*.py[cod]
+.venv/
 .mypy_cache/
-
-# ruff
 .ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# SQLite (legacy)
+*.db
+data/*.db

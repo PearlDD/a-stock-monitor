@@ -1,24 +1,55 @@
-# Builder Review — Test Reliability Fixes
+# Builder Review — Netlify + Supabase Migration
 
-## Status: COMPLETE
+## Summary
+
+Major architecture refactor: converted from FastAPI + SQLite + APScheduler to Netlify Functions + Supabase (PostgreSQL) + Netlify Scheduled Functions.
 
 ## Changes Made
 
-### Test Fixes (Code Review Follow-up)
+### Removed
+- All Python backend code (src/app/, tests/, pyproject.toml, uv.lock)
+- FastAPI, uvicorn, APScheduler, AKShare, aiosqlite dependencies
+- SQLite database files and config
 
-1. **`test_akshare_provider.py`**: Rewrote all mocks from `unittest.mock.patch` to `monkeypatch.setattr` for reliable async mocking. Previous approach was flaky with `asyncio.to_thread` — mocks sometimes didn't intercept the real akshare calls, causing network-dependent test failures.
+### Restructured
+- Moved Vue frontend from `frontend/` to root level (`src/`, `index.html`, `vite.config.js`)
+- Created root `package.json` with Vue + Supabase + Netlify dependencies
 
-2. **`test_routers.py`**: Rewrote `TestStockRouter` tests using `monkeypatch.setattr` on the `market_data` module directly (instead of `AsyncMock` with `patch`). Added 4 new endpoint tests:
-   - `test_get_stock_info` — stock info endpoint with mocked data
-   - `test_get_quotes_empty` — quotes endpoint
-   - `test_analyze_no_key` — AI analyze endpoint (no API key)
-   - `test_summarize_no_news` — AI summarize endpoint (no news)
+### Created — Netlify Functions (API)
+- `watchlist.js` — CRUD for stock watchlist via Supabase
+- `alerts.js` — CRUD for alert rules via Supabase
+- `quotes.js` — Real-time quotes via Tencent Finance API (qt.gtimg.cn)
+- `stock-info.js` — Stock info, financials, history, news, announcements
+- `capital-flow.js` — Capital flow top stocks
+- `settings.js` — Settings, test push, push quota
+- `search.js` — Stock search via Tencent smartbox API
 
-3. **`test_volume_spike.py`**: Updated comment to match the fixed logic (volumes now recorded AFTER evaluation, so first eval has no history → avg is 0 → no trigger).
+### Created — Netlify Scheduled Functions
+- `poll-quotes.js` — Every 1 min during trading hours: evaluate alerts, send PushPlus
+- `daily-digest.js` — 15:05 CST: daily watchlist summary
+- `check-capital-flow.js` — Every 5 min during trading hours: alert on large moves
+- `health-check.js` — 09:00 CST: verify Supabase connectivity, cleanup stale state
 
-4. **Cache isolation**: Added `cache.clear()` in the `client` fixture to prevent cross-test cache pollution.
+### Created — Shared Utilities
+- `shared/supabase.js` — Supabase client singleton
+- `shared/cors.js` — CORS headers and JSON response helpers
+- `shared/tencent.js` — Tencent Finance API URL builder and response parser
+- `shared/pushplus.js` — PushPlus notification sender with quota tracking
+- `shared/trading-hours.js` — A-share trading hours checker
 
-## Test Results
-- **176 tests passed, 0 failed** (up from 173 with 3 failures)
-- **Lint: All checks passed**
-- **No network calls in any test**
+### Created — Infrastructure
+- `netlify.toml` — Build config, function directory, API redirects, SPA fallback
+- `supabase/migrations/001_init.sql` — Schema: watchlist, alert_rules, push_history, alert_state
+
+### Updated
+- `.env.example` — Supabase vars + PushPlus token
+- `.gitignore` — Node.js patterns, .netlify/, legacy Python patterns
+- `CLAUDE.md` — Updated for new architecture
+- `vite.config.js` — Dev proxy targets Netlify CLI (port 8888)
+- `src/views/Settings.vue` — Data source label changed to "腾讯财经"
+
+## Verification
+- Frontend builds successfully (`npm run build`)
+- All functions use Netlify Functions v2 API with path-based routing
+- Alert dedup via Supabase `alert_state` table
+- Trading hours correctly converted to UTC cron expressions
