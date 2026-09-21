@@ -1,5 +1,5 @@
-import { sendPush } from './shared/pushplus.js'
 import { isTradingHours } from './shared/trading-hours.js'
+import { fetchTencentGBK } from './shared/tencent.js'
 
 /**
  * Scheduled: check capital flow every 5 minutes during trading hours.
@@ -18,9 +18,8 @@ export default async () => {
   }
 
   try {
-    const url = `http://qt.gtimg.cn/q=${POPULAR_CODES.join(',')}`
-    const res = await fetch(url)
-    const text = await res.text()
+    const url = `https://qt.gtimg.cn/q=${POPULAR_CODES.join(',')}`
+    const text = await fetchTencentGBK(url)
 
     const lines = text.split(';').filter((l) => l.includes('~'))
     const alerts = []
@@ -46,15 +45,9 @@ export default async () => {
       }
     }
 
-    if (alerts.length > 0) {
-      let content = '以下热门股大幅波动：\n\n'
-      for (const a of alerts) {
-        const sign = a.change_pct > 0 ? '+' : ''
-        content += `${a.name}(${a.code}) ¥${a.price.toFixed(2)} ${sign}${a.change_pct.toFixed(2)}%\n`
-      }
-      content += '\n⚠️ 仅供参考，不构成投资建议'
-      await sendPush('📈 热门股异动提醒', content)
-    }
+    // This feature has no per-user rule or delivery state yet. Logging avoids
+    // broadcasting one user's data to every configured PushPlus recipient.
+    if (alerts.length > 0) console.log(`Capital-flow signals found: ${alerts.length}`)
   } catch (err) {
     console.error('Capital flow check failed:', err.message)
   }

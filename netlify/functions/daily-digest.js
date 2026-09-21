@@ -1,51 +1,25 @@
 import { getSupabase } from './shared/supabase.js'
-import { buildTencentUrl, parseTencentResponse } from './shared/tencent.js'
+import { buildTencentUrl, parseTencentResponse, fetchTencentGBK } from './shared/tencent.js'
 import { sendPush } from './shared/pushplus.js'
+import { getUserPushToken } from './shared/push-settings.js'
 
-/**
- * Scheduled: daily digest at 07:05 UTC (= 15:05 CST, after market close).
- * Sends a summary of watchlist performance.
- */
 export default async () => {
   const supabase = getSupabase()
-
-  const { data: watchlist } = await supabase
-    .from('watchlist')
-    .select('code, name')
-
-  if (!watchlist?.length) {
-    console.log('Watchlist is empty, skipping digest')
-    return
-  }
-
-  const codes = watchlist.map((s) => s.code)
-  const tencentUrl = buildTencentUrl(codes)
-  const res = await fetch(tencentUrl)
-  const text = await res.text()
-  const quotes = parseTencentResponse(text)
-
-  if (!quotes.length) {
-    console.log('No quote data, skipping digest')
-    return
-  }
-
-  // Sort by change_pct descending
-  quotes.sort((a, b) => b.change_pct - a.change_pct)
-
-  const title = '📊 今日行情总结'
-  let content = '今日自选股表现：\n\n'
-
-  for (const q of quotes) {
-    const arrow = q.change_pct > 0 ? '🔴' : q.change_pct < 0 ? '🟢' : '⚪'
-    const sign = q.change_pct > 0 ? '+' : ''
-    content += `${arrow} ${q.name} ¥${q.price.toFixed(2)} ${sign}${q.change_pct.toFixed(2)}%\n`
-  }
-
-  content += '\n⚠️ 仅供参考，不构成投资建议'
-
-  await sendPush(title, content)
+  try {
+    const { data: watchlist, error } = await supabase.from('watchlist').select('user_id, code, name').not('user_id', 'is', null)
+    if (error) throw error
+    const groups = new Map()
+    for (const stock of watchlist || []) groups.set(stock.user_id, [...(groups.get(stock.user_id) || []), stock])
+    for (const [userId, stocks] of groups) {
+      const quotes = parseTencentResponse(await fetchTencentGBK(buildTencentUrl(stocks.map((stock) => stock.code))))
+      if (!quotes.length) continue
+      const token = await getUserPushToken(userId)
+      if (!token) continue
+      quotes.sort((a, b) => b.change_pct - a.change_pct)
+      const content = `今日自选股表现：\n\n${quotes.map((q) => `${q.change_pct > 0 ? '🔴' : q.change_pct < 0 ? '🟢' : '⚪'} ${q.name} ${q.currency === 'USD' ? '$' : '¥'}${q.price.toFixed(2)} ${(q.change_pct > 0 ? '+' : '') + q.change_pct.toFixed(2)}%`).join('\n')}\n\n⚠️ 仅供参考，不构成投资建议`
+      await sendPush('📊 今日行情总结', content, { token, userId })
+    }
+  } catch (error) { console.error('daily digest failed', error.message) }
 }
 
-export const config = {
-  schedule: '5 7 * * 1-5',
-}
+export const config = { schedule: '5 7 * * 1-5' }

@@ -1,8 +1,12 @@
 import { buildTencentUrl, parseTencentResponse, fetchTencentGBK } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
+import { requireUser } from './shared/auth.js'
+import { parseCodes } from './shared/validation.js'
 
 export default async (req) => {
-  if (req.method === 'OPTIONS') return handleOptions()
+  if (req.method === 'OPTIONS') return handleOptions(req)
+  const auth = await requireUser(req)
+  if (auth.response) return auth.response
 
   const url = new URL(req.url)
   const codesParam = url.searchParams.get('codes')
@@ -11,9 +15,9 @@ export default async (req) => {
     return jsonResponse({ error: '需要codes参数' }, 400)
   }
 
-  const codes = codesParam.split(',').map((c) => c.trim()).filter(Boolean)
-  if (!codes.length) {
-    return jsonResponse({ error: '股票代码不能为空' }, 400)
+  const codes = parseCodes(codesParam)
+  if (!codes) {
+    return jsonResponse({ error: '股票代码必须为 1–50 个有效 A 股或美股代码' }, 400, req)
   }
 
   try {

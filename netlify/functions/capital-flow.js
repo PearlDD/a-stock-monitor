@@ -1,5 +1,6 @@
 import { fetchTencentGBK } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
+import { requireUser } from './shared/auth.js'
 
 /**
  * Capital flow top stocks.
@@ -15,10 +16,12 @@ const POPULAR_STOCKS = [
 ]
 
 export default async (req) => {
-  if (req.method === 'OPTIONS') return handleOptions()
+  if (req.method === 'OPTIONS') return handleOptions(req)
+  const auth = await requireUser(req)
+  if (auth.response) return auth.response
 
   try {
-    const url = `http://qt.gtimg.cn/q=${POPULAR_STOCKS.join(',')}`
+    const url = `https://qt.gtimg.cn/q=${POPULAR_STOCKS.join(',')}`
     const text = await fetchTencentGBK(url)
 
     const stocks = []

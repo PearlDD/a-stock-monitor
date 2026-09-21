@@ -1,8 +1,14 @@
 import { getSupabase } from './shared/supabase.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
+import { requireUser } from './shared/auth.js'
+import { normalizeStockCode } from './shared/validation.js'
 
 export default async (req, context) => {
-  if (req.method === 'OPTIONS') return handleOptions()
+  if (req.method === 'OPTIONS') return handleOptions(req)
+
+  const auth = await requireUser(req)
+  if (auth.response) return auth.response
+  const userId = auth.user.id
 
   const supabase = getSupabase()
   const url = new URL(req.url)
@@ -14,6 +20,7 @@ export default async (req, context) => {
       const { data, error } = await supabase
         .from('watchlist')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: true })
       if (error) throw error
       return jsonResponse({ stocks: data })
@@ -22,20 +29,22 @@ export default async (req, context) => {
     if (req.method === 'POST') {
       const body = await req.json()
       const { code, name, market, sector } = body
-      if (!code) return jsonResponse({ error: '股票代码不能为空' }, 400)
+      const normalizedCode = normalizeStockCode(code)
+      if (!normalizedCode) return jsonResponse({ error: '请输入有效的 A 股代码或美股代码（如 AAPL）' }, 400, req)
       const { error } = await supabase
         .from('watchlist')
-        .upsert({ code, name: name || code, market, sector })
+        .upsert({ user_id: userId, code: normalizedCode, name: String(name || normalizedCode).slice(0, 60), market, sector }, { onConflict: 'user_id,code' })
       if (error) throw error
       return jsonResponse({ success: true })
     }
 
     if (req.method === 'DELETE') {
-      const code = pathParts[1]
-      if (!code) return jsonResponse({ error: '股票代码不能为空' }, 400)
+      const code = normalizeStockCode(pathParts[1])
+      if (!code) return jsonResponse({ error: '股票代码无效' }, 400, req)
       const { error } = await supabase
         .from('watchlist')
         .delete()
+        .eq('user_id', userId)
         .eq('code', code)
       if (error) throw error
       return jsonResponse({ success: true })

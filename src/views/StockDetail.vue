@@ -4,11 +4,11 @@
 
     <!-- Price Header -->
     <div class="price-header" :class="priceClass">
-      <div class="current-price">¥{{ formatPrice(quote.price) }}</div>
+      <div class="current-price">{{ currencySymbol }}{{ formatPrice(quote.price) }}</div>
       <div class="price-info">
         {{ formatChange(quote.change_pct) }}
         <span v-if="quote.prev_close">
-          昨收 ¥{{ formatPrice(quote.prev_close) }}
+          昨收 {{ currencySymbol }}{{ formatPrice(quote.prev_close) }}
         </span>
       </div>
       <div class="data-delay">数据可能存在延迟，仅供参考</div>
@@ -20,15 +20,15 @@
         <div class="info-grid">
           <div class="info-item">
             <span class="label">今开</span>
-            <span>¥{{ formatPrice(quote.open) }}</span>
+            <span>{{ currencySymbol }}{{ formatPrice(quote.open) }}</span>
           </div>
           <div class="info-item">
             <span class="label">最高</span>
-            <span class="price-up">¥{{ formatPrice(quote.high) }}</span>
+            <span class="price-up">{{ currencySymbol }}{{ formatPrice(quote.high) }}</span>
           </div>
           <div class="info-item">
             <span class="label">最低</span>
-            <span class="price-down">¥{{ formatPrice(quote.low) }}</span>
+            <span class="price-down">{{ currencySymbol }}{{ formatPrice(quote.low) }}</span>
           </div>
           <div class="info-item">
             <span class="label">成交量</span>
@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   getQuotes, getStockNews,
@@ -116,7 +116,7 @@ const code = route.params.code
 const stockName = ref(code)
 const activeTab = ref(0)
 
-const quote = ref({ price: 0, change_pct: 0, prev_close: 0, open: 0, high: 0, low: 0, volume: 0, amount: 0 })
+const quote = ref({ price: 0, change_pct: 0, prev_close: 0, open: 0, high: 0, low: 0, volume: 0, amount: 0, currency: 'CNY' })
 const news = ref([])
 const financials = ref(null)
 const history = ref([])
@@ -127,6 +127,7 @@ const newsPage = ref(0)
 const chartCanvas = ref(null)
 
 const priceClass = ref('price-flat')
+const currencySymbol = computed(() => quote.value.currency === 'USD' || !/^\d{6}$/.test(code) ? '$' : '¥')
 
 const fetchQuote = async () => {
   try {

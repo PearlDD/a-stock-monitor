@@ -37,8 +37,8 @@
     <!-- Add Alert Dialog -->
     <van-popup v-model:show="showAdd" position="bottom" round style="padding: 20px;">
       <van-form @submit="onSubmit">
-        <van-field v-model="form.stock_code" label="股票代码" placeholder="如 600519" required />
-        <van-field v-model="form.stock_name" label="股票名称" placeholder="如 贵州茅台" />
+        <van-field v-model="form.stock_code" label="股票代码" placeholder="如 AAPL 或 600519" required />
+        <van-field v-model="form.stock_name" label="股票名称（可选）" placeholder="如 Apple；系统会校验代码" />
         <van-field name="alert_type" label="提醒类型">
           <template #input>
             <van-radio-group v-model="form.alert_type" direction="horizontal">
@@ -51,7 +51,7 @@
         </van-field>
         <van-field
           v-model.number="form.threshold"
-          label="阈值"
+          :label="targetPriceLabel"
           type="number"
           :placeholder="thresholdHint"
         />
@@ -96,6 +96,8 @@ const thresholdHint = computed(() => {
   return hints[form.value.alert_type] || ''
 })
 
+const targetPriceLabel = computed(() => (/^\D/.test(form.value.stock_code.trim()) ? '阈值（美元）' : '阈值（人民币）'))
+
 const alertTypeLabel = (type) => {
   const labels = {
     price_target: '目标价',
@@ -112,11 +114,20 @@ const fetchAlerts = async () => {
 }
 
 const onSubmit = async () => {
-  await createAlert(form.value)
-  showToast('提醒已添加')
-  showAdd.value = false
-  form.value = { stock_code: '', stock_name: '', alert_type: 'price_target', threshold: 0, direction: 'above' }
-  await fetchAlerts()
+  const code = form.value.stock_code.trim()
+  if (!code) return showToast('请填写股票代码，例如 AAPL')
+  if (form.value.alert_type === 'price_target' && (!Number.isFinite(form.value.threshold) || form.value.threshold <= 0)) {
+    return showToast('请在“阈值”中填写大于 0 的目标价格')
+  }
+  try {
+    await createAlert({ ...form.value, stock_code: code })
+    showToast('提醒已添加')
+    showAdd.value = false
+    form.value = { stock_code: '', stock_name: '', alert_type: 'price_target', threshold: 0, direction: 'above' }
+    await fetchAlerts()
+  } catch (error) {
+    showToast(error.response?.data?.error || '添加失败，请检查股票代码和阈值')
+  }
 }
 
 const toggleAlert = async (id, enabled) => {

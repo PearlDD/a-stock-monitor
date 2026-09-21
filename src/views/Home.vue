@@ -24,7 +24,7 @@
           </div>
           <div class="stock-right">
             <div class="stock-price" :class="priceClass(stock)">
-              ¥{{ formatPrice(stock.price) }}
+              {{ currencySymbol(stock) }}{{ formatPrice(stock.price) }}
             </div>
             <div class="stock-change" :class="priceClass(stock)">
               {{ formatChange(stock.change_pct) }}
@@ -37,7 +37,7 @@
     <van-popup v-model:show="showSearch" position="top" :style="{ height: '80%' }">
       <van-search
         v-model="searchQuery"
-        placeholder="输入股票代码或名称"
+        placeholder="输入名称或代码（如 Apple、AAPL、600519）"
         show-action
         @search="onSearch"
         @cancel="showSearch = false"
@@ -128,6 +128,7 @@ const priceClass = (stock) => {
 }
 
 const formatPrice = (p) => (p || 0).toFixed(2)
+const currencySymbol = (stock) => stock.currency === 'USD' || stock.market === 'US' ? '$' : '¥'
 const formatChange = (pct) => {
   if (!pct) return '0.00%'
   return (pct > 0 ? '+' : '') + pct.toFixed(2) + '%'

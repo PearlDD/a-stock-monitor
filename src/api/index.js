@@ -1,8 +1,15 @@
 import axios from 'axios'
+import { supabase } from '../lib/supabase'
 
 const api = axios.create({
   baseURL: '/api',
   timeout: 15000,
+})
+
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase?.auth.getSession() || { data: {} }
+  if (session?.access_token) config.headers.Authorization = `Bearer ${session.access_token}`
+  return config
 })
 
 // Watchlist
@@ -22,6 +29,7 @@ export const getAlerts = () => api.get('/alerts')
 export const createAlert = (rule) => api.post('/alerts', rule)
 export const updateAlert = (id, data) => api.put(`/alerts/${id}`, data)
 export const deleteAlert = (id) => api.delete(`/alerts/${id}`)
+export const getAlertNotifications = () => api.get('/alert-notifications')
 
 // Search
 export const searchStocks = (q) => api.get('/search', { params: { q } })

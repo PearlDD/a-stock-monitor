@@ -1,8 +1,13 @@
 import { buildTencentUrl, parseTencentResponse } from './shared/tencent.js'
 import { jsonResponse, handleOptions } from './shared/cors.js'
+import { requireUser } from './shared/auth.js'
+import { normalizeStockCode } from './shared/validation.js'
+import { fetchTencentGBK } from './shared/tencent.js'
 
 export default async (req) => {
-  if (req.method === 'OPTIONS') return handleOptions()
+  if (req.method === 'OPTIONS') return handleOptions(req)
+  const auth = await requireUser(req)
+  if (auth.response) return auth.response
 
   const url = new URL(req.url)
   // Match paths like /api/stocks/600519/info, /api/stocks/600519/news, etc.
@@ -11,7 +16,8 @@ export default async (req) => {
     return jsonResponse({ error: '无效路径' }, 400)
   }
 
-  const code = match[1]
+  const code = normalizeStockCode(match[1])
+  if (!code) return jsonResponse({ error: '股票代码必须为六码数字' }, 400, req)
   const action = match[2]
 
   try {
@@ -41,8 +47,7 @@ export default async (req) => {
 
 async function getStockInfo(code) {
   const tencentUrl = buildTencentUrl([code])
-  const res = await fetch(tencentUrl)
-  const text = await res.text()
+  const text = await fetchTencentGBK(tencentUrl)
   const quotes = parseTencentResponse(text)
 
   if (!quotes.length) {
@@ -78,8 +83,7 @@ async function getStockNews(code, limit) {
 
 async function getStockFinancials(code) {
   const tencentUrl = buildTencentUrl([code])
-  const res = await fetch(tencentUrl)
-  const text = await res.text()
+  const text = await fetchTencentGBK(tencentUrl)
   const quotes = parseTencentResponse(text)
 
   if (!quotes.length) {
@@ -102,8 +106,7 @@ async function getStockHistory(code, days) {
   // Use Tencent day-level kline: minimal implementation
   // qt.gtimg.cn doesn't have easy kline API; use current quote as single point
   const tencentUrl = buildTencentUrl([code])
-  const res = await fetch(tencentUrl)
-  const text = await res.text()
+  const text = await fetchTencentGBK(tencentUrl)
   const quotes = parseTencentResponse(text)
 
   if (!quotes.length) {
